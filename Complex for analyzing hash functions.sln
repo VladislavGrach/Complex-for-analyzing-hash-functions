@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35919.96 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Complex for analyzing hash functions", "Complex for analyzing hash functions\Complex for analyzing hash functions.csproj", "{FA3BB01F-E572-43FC-B388-E7F446430247}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FA3BB01F-E572-43FC-B388-E7F446430247}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FA3BB01F-E572-43FC-B388-E7F446430247}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FA3BB01F-E572-43FC-B388-E7F446430247}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA3BB01F-E572-43FC-B388-E7F446430247}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4F9A776B-DD90-4D55-81F7-ECD5F65E32C6}
+	EndGlobalSection
+EndGlobal
