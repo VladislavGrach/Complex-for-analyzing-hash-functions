@@ -1,0 +1,22 @@
+﻿@model Complex_for_analyzing_hash_functions.Models.HashTestParameters
+
+<h2>Hash Testing</h2>
+
+<form asp-action="Run" method="post">
+    <label>Тестов:</label>
+    <input asp-for="TestsCount" value="100" /><br />
+
+    <label>Размер входа (байт):</label>
+    <input asp-for="InputSizeBytes" value="32" /><br />
+
+    <label>Число раундов:</label>
+    <input asp-for="Rounds" value="8" /><br />
+
+    <label>Алгоритм:</label>
+    <select asp-for="Algorithm">
+        <option>Keccak</option>
+    </select>
+    <br /><br />
+
+    <button type="submit">Запустить</button>
+</form>

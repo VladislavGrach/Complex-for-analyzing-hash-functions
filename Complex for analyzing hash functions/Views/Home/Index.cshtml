@@ -1,8 +1,48 @@
-﻿@{
+﻿@* @{
     ViewData["Title"] = "Home Page";
 }
 
 <div class="text-center">
     <h1 class="display-4">Welcome</h1>
     <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+</div>
+ *@
+
+
+
+
+@{
+    ViewData["Title"] = "Главная";
+}
+
+<div class="text-center mt-4">
+
+    <h1 class="display-5 mb-4">Комплекс для анализа хэш-функций</h1>
+
+    <p class="lead">
+        Это исследовательский инструмент для статистического анализа хэш-функций
+        <strong>SHA-3 (Keccak)</strong> и <strong>BLAKE2</strong>.
+    </p>
+
+    <p>
+        Вы можете запускать тестирование, уменьшать количество раундов,
+        анализировать распределение битов и сохранять результаты в SQL Server.
+    </p>
+
+    <hr class="my-4" />
+
+    <div class="d-flex justify-content-center">
+
+        <a class="btn btn-primary btn-lg mx-2"
+           asp-controller="HashTest" asp-action="Index">
+            Запустить тестирование
+        </a>
+
+        <a class="btn btn-outline-secondary btn-lg mx-2"
+           asp-controller="HashResults" asp-action="Index">
+            Просмотр результатов
+        </a>
+
+    </div>
+
 </div>

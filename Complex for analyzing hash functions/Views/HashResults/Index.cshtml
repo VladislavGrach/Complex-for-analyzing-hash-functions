@@ -1,0 +1,40 @@
+﻿@model IEnumerable<Complex_for_analyzing_hash_functions.Models.HashTestResult>
+
+<h2>Результаты тестирования</h2>
+
+@if (!Model.Any())
+{
+    <p>Результатов пока нет.</p>
+}
+else
+{
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Дата</th>
+                <th>Алгоритм</th>
+                <th>Раунды</th>
+                <th>Тестов</th>
+                <th>Средний Hamming</th>
+                <th>StdDev</th>
+                <th>Chi2</th>
+                <th>Коллизий</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model)
+            {
+                <tr>
+                    <td>@r.RunDate</td>
+                    <td>@r.Algorithm</td>
+                    <td>@r.Rounds</td>
+                    <td>@r.TestsCount</td>
+                    <td>@r.AvgHamming</td>
+                    <td>@r.StdDevHamming</td>
+                    <td>@r.ChiSquare</td>
+                    <td>@r.CollisionCount</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

@@ -1,4 +1,15 @@
+using Complex_for_analyzing_hash_functions.Data;
+using Complex_for_analyzing_hash_functions.Services;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<IHashFunction, KeccakHash>();
+builder.Services.AddScoped<StatisticsService>();
+
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();

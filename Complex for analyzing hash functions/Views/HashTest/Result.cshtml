@@ -1,0 +1,15 @@
+﻿@model Complex_for_analyzing_hash_functions.Models.HashTestResult
+
+<h2>Результат</h2>
+
+<p><b>Алгоритм:</b> @Model.Algorithm</p>
+<p><b>Раундов:</b> @Model.Rounds</p>
+<p><b>Тестов:</b> @Model.TestsCount</p>
+
+<p><b>Средний Hamming:</b> @Model.AvgHamming</p>
+<p><b>StdDev:</b> @Model.StdDevHamming</p>
+<p><b>Chi-Square:</b> @Model.ChiSquare</p>
+<p><b>Коллизий:</b> @Model.CollisionCount</p>
+
+<h3>BitFlipCounts (JSON)</h3>
+<pre>@Model.BitFlipJson</pre>
