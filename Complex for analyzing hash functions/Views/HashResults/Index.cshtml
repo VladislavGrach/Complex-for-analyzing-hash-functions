@@ -1,40 +1,78 @@
 ﻿@model IEnumerable<Complex_for_analyzing_hash_functions.Models.HashTestResult>
+@using System.Text.Json;
 
-<h2>Результаты тестирования</h2>
+<h2 class="mb-4">Список результатов тестирования</h2>
 
-@if (!Model.Any())
-{
-    <p>Результатов пока нет.</p>
-}
-else
-{
-    <table class="table table-bordered table-striped">
-        <thead>
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Дата</th>
+            <th>Алгоритм</th>
+            <th>Раунды</th>
+            <th>Тестов</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @foreach (var r in Model)
+        {
+            var raw = JsonSerializer.Deserialize<JsonElement>(r.BitFlipJson);
+            var json = Complex_for_analyzing_hash_functions.Helpers.JsonUtils.NormalizeToObject(raw);
+
             <tr>
-                <th>Дата</th>
-                <th>Алгоритм</th>
-                <th>Раунды</th>
-                <th>Тестов</th>
-                <th>Средний Hamming</th>
-                <th>StdDev</th>
-                <th>Chi2</th>
-                <th>Коллизий</th>
+                <td>@r.Id</td>
+                <td>@r.RunDate</td>
+                <td>@r.Algorithm</td>
+                <td>@r.Rounds</td>
+                <td>@r.TestsCount</td>
+                <td>@r.AvgHamming</td>
+                <td>@r.CollisionCount</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#details-@r.Id"
+                            aria-expanded="false">
+                        Показать детали
+                    </button>
+                </td>
             </tr>
-        </thead>
-        <tbody>
-            @foreach (var r in Model)
-            {
-                <tr>
-                    <td>@r.RunDate</td>
-                    <td>@r.Algorithm</td>
-                    <td>@r.Rounds</td>
-                    <td>@r.TestsCount</td>
-                    <td>@r.AvgHamming</td>
-                    <td>@r.StdDevHamming</td>
-                    <td>@r.ChiSquare</td>
-                    <td>@r.CollisionCount</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+
+            <tr class="collapse" id="details-@r.Id">
+                <td colspan="8">
+                    <h5>NIST тесты</h5>
+                    <ul>
+                        @if (json.TryGetProperty("NIST", out var nist))
+                        {
+                            foreach (var test in nist.EnumerateObject())
+                            {
+                                <li><b>@test.Name:</b> @test.Value</li>
+                            }
+                        }
+                    </ul>
+
+                    <hr />
+
+                    <h5>Diehard тесты</h5>
+                    <ul>
+                        @if (json.TryGetProperty("Diehard", out var dh))
+                        {
+                            foreach (var test in dh.EnumerateObject())
+                            {
+                                <li><b>@test.Name:</b> @test.Value</li>
+                            }
+                        }
+                    </ul>
+
+                    <hr />
+
+                    <details>
+                        <summary>Полный JSON</summary>
+                        <pre>@r.BitFlipJson</pre>
+                    </details>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

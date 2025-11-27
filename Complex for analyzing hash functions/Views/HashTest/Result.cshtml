@@ -1,15 +1,72 @@
 ﻿@model Complex_for_analyzing_hash_functions.Models.HashTestResult
+@using System.Text.Json;
 
-<h2>Результат</h2>
+@{
+    ViewData["Title"] = "Результат тестирования";
+    var stats = JsonSerializer.Deserialize<JsonElement>(Model.BitFlipJson);
+}
 
-<p><b>Алгоритм:</b> @Model.Algorithm</p>
-<p><b>Раундов:</b> @Model.Rounds</p>
-<p><b>Тестов:</b> @Model.TestsCount</p>
+<h2 class="mb-4">Результаты тестирования</h2>
 
-<p><b>Средний Hamming:</b> @Model.AvgHamming</p>
-<p><b>StdDev:</b> @Model.StdDevHamming</p>
-<p><b>Chi-Square:</b> @Model.ChiSquare</p>
-<p><b>Коллизий:</b> @Model.CollisionCount</p>
+<div class="card mb-4">
+    <div class="card-header">
+        Основная статистика
+    </div>
+    <div class="card-body">
+        <p><b>Алгоритм:</b> @Model.Algorithm</p>
+        <p><b>Раунды:</b> @Model.Rounds</p>
+        <p><b>Количество тестов:</b> @Model.TestsCount</p>
 
-<h3>BitFlipCounts (JSON)</h3>
-<pre>@Model.BitFlipJson</pre>
+        <p><b>Средний Hamming:</b> @Model.AvgHamming</p>
+        <p><b>Стандартное отклонение Hamming:</b> @Model.StdDevHamming</p>
+        <p><b>Chi-Square:</b> @Model.ChiSquare</p>
+        <p><b>Количество коллизий:</b> @Model.CollisionCount</p>
+
+        <p><b>Дата запуска:</b> @Model.RunDate</p>
+    </div>
+</div>
+
+@if (stats.TryGetProperty("NIST", out var nist))
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            Результаты NIST тестов
+        </div>
+        <div class="card-body">
+            <ul>
+                @foreach (var test in nist.EnumerateObject())
+                {
+                    <li><b>@test.Name:</b> @test.Value</li>
+                }
+            </ul>
+        </div>
+    </div>
+}
+
+@if (stats.TryGetProperty("Diehard", out var dh))
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            Результаты Diehard тестов
+        </div>
+        <div class="card-body">
+            <ul>
+                @foreach (var test in dh.EnumerateObject())
+                {
+                    <li><b>@test.Name:</b> @test.Value</li>
+                }
+            </ul>
+        </div>
+    </div>
+}
+
+<div class="card">
+    <div class="card-header">
+        Полный JSON (вспомогательная информация)
+    </div>
+    <div class="card-body">
+        <pre style="background:#f8f8f8; padding:15px; border-radius:6px; white-space:pre-wrap;">
+            @Model.BitFlipJson
+        </pre>
+    </div>
+</div>

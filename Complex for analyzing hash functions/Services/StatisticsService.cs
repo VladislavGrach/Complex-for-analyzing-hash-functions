@@ -88,5 +88,10 @@ namespace Complex_for_analyzing_hash_functions.Services
                 sum += BitOperations.PopCount((byte)(a[i] ^ b[i]));
             return sum;
         }
+
+        public byte[] Hash(byte[] input, int rounds)
+        {
+            return _hash.ComputeHash(input, rounds);
+        }
     }
 }
