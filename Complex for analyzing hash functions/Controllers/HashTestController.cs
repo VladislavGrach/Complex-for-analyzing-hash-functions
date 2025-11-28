@@ -69,7 +69,11 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             double dft = _nist.DiscreteFourierTransformTest(bits);
             double nonOverlap = _nist.NonOverlappingTemplateMatchingTest(bits, "000111");
             double overlap = _nist.OverlappingTemplateMatchingTest(bits, 10);
-            double maurer = _nist.MaurersUniversalTest(bits);
+            //double maurer = _nist.MaurersUniversalTest(bits);
+            double maurer = _nist.MaurersUniversalTestOnHashStream(
+                input => _stats.Hash(input, p.Rounds),
+                200000
+            );
             double lempelZiv = _nist.LempelZivCompressionTest(bits);
             double linearComplexity = _nist.LinearComplexityTest(bits, 32);
             double serial = _nist.SerialTest(bits, 2);
