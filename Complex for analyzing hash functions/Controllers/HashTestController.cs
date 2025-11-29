@@ -3,6 +3,7 @@ using Complex_for_analyzing_hash_functions.Models;
 using Complex_for_analyzing_hash_functions.Services;
 using Complex_for_analyzing_hash_functions.Data;
 using Complex_for_analyzing_hash_functions.Interfaces;
+using System.Security.Policy;
 
 namespace Complex_for_analyzing_hash_functions.Controllers
 {
@@ -72,15 +73,29 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             //double maurer = _nist.MaurersUniversalTest(bits);
             double maurer = _nist.MaurersUniversalTestOnHashStream(
                 input => _stats.Hash(input, p.Rounds),
-                200000
+                1_500_000
             );
-            double lempelZiv = _nist.LempelZivCompressionTest(bits);
+            //double lempelZiv = _nist.LempelZivCompressionTest(bits);
+            double lempelZiv = _nist.LempelZivCompressionTestOnHashStream(
+                input => _stats.Hash(input, p.Rounds),
+                200_000
+            );
+
             double linearComplexity = _nist.LinearComplexityTest(bits, 32);
             double serial = _nist.SerialTest(bits, 2);
             double approxEntropy = _nist.ApproximateEntropyTest(bits, 2);
             double cusum = _nist.CusumTest(bits);
-            double excursions = _nist.RandomExcursionsTest(bits);
-            double excursionsVar = _nist.RandomExcursionsVariantTest(bits);
+            double excursions = _nist.RandomExcursionsTestOnHashStream(
+                input => _stats.Hash(input, p.Rounds),
+                1_500_000
+            );
+
+            double excursionsVar = _nist.RandomExcursionsVariantTestOnHashStream(
+                input => _stats.Hash(input, p.Rounds),
+                1_500_000
+            );
+
+
 
 
             // ========== DIEHARD TESTS ==========

@@ -69,7 +69,7 @@ namespace The_complex_of_testing_hash_functions.Services
                 expected[k] = n * BinomialProbability(8, k, 0.5);
             }
 
-            // χ² = Σ (O - E)^2 / E
+            // χ2 = Σ (O - E)^2 / E
             double chiSquare = 0;
             for (int i = 0; i <= 8; i++)
             {

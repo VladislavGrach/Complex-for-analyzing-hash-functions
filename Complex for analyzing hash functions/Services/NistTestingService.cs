@@ -1,6 +1,4 @@
 ﻿using Complex_for_analyzing_hash_functions.Interfaces;
-using System;
-using System.Linq;
 using System.Numerics;
 using System.Text;
 
@@ -124,7 +122,7 @@ namespace The_complex_of_testing_hash_functions.Services
                 else frequencies[3]++;
             }
 
-            // Ожидаемые вероятности (NIST SP 800-22, blockSize = 128)
+            // Ожидаемые вероятности
             double[] pi = { 0.1174, 0.2430, 0.2493, 0.3903 };
             double chiSquared = 0;
 
@@ -151,7 +149,7 @@ namespace The_complex_of_testing_hash_functions.Services
             int availableBits = bits.Length;
             int neededBits = MIN_MATRICES * matrixSize;
 
-            // Если не хватает — дополняем случайными битами (NIST compliant)
+            // Если не хватает — дополняем случайными битами
             if (availableBits < neededBits)
             {
                 int missing = neededBits - availableBits;
@@ -203,7 +201,6 @@ namespace The_complex_of_testing_hash_functions.Services
 
             return double.IsFinite(pValue) ? pValue : 0.0;
         }
-
         #endregion
 
         #region Discrete Fourier Transform Test
@@ -246,20 +243,17 @@ namespace The_complex_of_testing_hash_functions.Services
             int countLess = magnitudes.Take(m).Count(val => val < T);
 
             // 6) Ожидаемое число таких пиков и дисперсия согласно NIST
-            // expected = 0.95 * n / 2
-            // variance denominator used by NIST: n * 0.95 * 0.05 / 4
             double expected = 0.95 * n / 2.0;
             double variance = n * 0.95 * 0.05 / 4.0;
 
-            // 7) Вычисляем статистику и p-value (используем erfc как в NIST)
+            // 7) Вычисляем статистику и p-value
             double d = (countLess - expected) / Math.Sqrt(variance);
 
             // erfc(x) — комплементарная ошибка; pValue = erfc(|d| / sqrt(2))
             double pValue = Erfc(Math.Abs(d) / Math.Sqrt(2.0));
 
-            // Ограничение чисел
             if (!double.IsFinite(pValue)) return 0.0;
-            return Math.Round(pValue, 8);
+            return pValue;
         }
         #endregion
 
@@ -308,22 +302,22 @@ namespace The_complex_of_testing_hash_functions.Services
                 W[i] = count;
             }
 
-            // λ и дисперсия по NIST SP 800-22
+            // λ и дисперсия
             double lambda = (M - m + 1) / Math.Pow(2, m);
             double variance = lambda * (1 - (1.0 / Math.Pow(2, m)));
 
             if (variance <= 0) return 0;
 
-            // χ² статистика
+            // χ2 статистика
             double chi2 = 0.0;
             for (int i = 0; i < K; i++)
                 chi2 += Math.Pow(W[i] - lambda, 2) / variance;
 
             // p-value через комплементарную гамма-функцию:
-            // p = Q(K/2, χ²/2) = igamc(K/2, χ²/2)
+            // p = Q(K/2, χ2/2) = igamc(K/2, χ2/2)
             double pValue = Igamc(K / 2.0, chi2 / 2.0);
 
-            return double.IsFinite(pValue) ? Math.Round(pValue, 8) : 0.0;
+            return double.IsFinite(pValue) ? pValue : 0.0;
         }
 
         #endregion
@@ -343,7 +337,7 @@ namespace The_complex_of_testing_hash_functions.Services
                 if (subPattern == pattern) count++;
             }
 
-            // Примерная оценка p-value (уточните по NIST SP 800-22)
+            // Примерная оценка p-value
             double lambda = (bits.Length - m + 1) / Math.Pow(2, m);
             double pValue = Math.Exp(-lambda) * Math.Pow(lambda, count) / Factorial(count);
             return pValue;
@@ -352,176 +346,163 @@ namespace The_complex_of_testing_hash_functions.Services
 
         #region Maurers Universal Test
         // Универсальный тест Маурера
-        //public double MaurersUniversalTest(string bits)
-        //{
-        //    int n = bits.Length;
-        //    if (n < 1000) return -1;
+        private const int MAURER_MIN_BITS = 1_500_000;
 
-        //    int L = 7;
-        //    while ((1 << L) > n / 10 && L > 4) L--;
+        public double MaurersUniversalTestOnHashStream(
+            Func<byte[], byte[]> hashFunction,
+            int requiredBits = MAURER_MIN_BITS)
+        {
+            if (hashFunction == null)
+                throw new ArgumentNullException(nameof(hashFunction));
 
-        //    int Q = 1 << L;
-        //    int K = n / L - Q;
-        //    if (K <= 0 || L < 5 || L >= 10) return -1;
+            if (requiredBits < MAURER_MIN_BITS)
+                requiredBits = MAURER_MIN_BITS;
 
-        //    int[] table = new int[1 << L];
-        //    int sum = 0;
+            string bits = GenerateHashStream(hashFunction, requiredBits);
 
-        //    for (int i = 0; i < Q; i++)
-        //    {
-        //        int pattern = Convert.ToInt32(bits.Substring(i * L, L), 2);
-        //        table[pattern] = i + 1;
-        //    }
-
-        //    for (int i = Q; i < Q + K; i++)
-        //    {
-        //        int pattern = Convert.ToInt32(bits.Substring(i * L, L), 2);
-        //        sum += (i + 1) - table[pattern];
-        //        table[pattern] = i + 1;
-        //    }
-
-        //    double fn = sum / (double)K;
-
-        //    double[] expectedValues = { 0, 0, 0, 0, 0, 5.2177052, 6.1962507, 7.1836656, 8.1764248, 9.1723243, 10.170032 };
-        //    double[] variances = { 0, 0, 0, 0, 0, 2.954, 3.125, 3.238, 3.311, 3.356, 3.384 };
-
-        //    double expected = expectedValues[L];
-        //    double variance = variances[L];
-
-        //    double z = (fn - expected) / Math.Sqrt(variance);
-        //    return 2.0 * (1.0 - NormalCDF(Math.Abs(z)));
-        //}
+            return MaurersUniversalTest(bits);
+        }
 
         public double MaurersUniversalTest(string bits)
         {
             int n = bits.Length;
 
-            // Allowed block sizes per NIST
-            int[] Ls = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
-            int L = 0;
+            int L;
+            if (n >= 3878400) L = 15;
+            else if (n >= 1715000) L = 14;
+            else if (n >= 904960) L = 13;
+            else if (n >= 462400) L = 12;
+            else if (n >= 206848) L = 11;
+            else if (n >= 90400) L = 10;
+            else return 0.0;   // длина слишком мала
 
-            // Find suitable L
-            foreach (int candidate in Ls)
-            {
-                int Q = 10 * (1 << candidate);
-                int blocks = n / candidate;
-                int K = blocks - Q;
+            int Q = 10 * (1 << L);         // TRAINING
+            int K = (n / L) - Q;           // TEST BLOCKS
 
-                if (K >= 1000)
-                {
-                    L = candidate;
-                    break;
-                }
-            }
-
-            if (L == 0)
-                return 0.0; // fallback for too-small sequences
-
-            int Q2 = 10 * (1 << L);
-            int totalBlocks = n / L;
-            int K2 = totalBlocks - Q2;
-
-            if (K2 < 1000)
+            if (K < 1000)
                 return 0.0;
 
-            // Init table
             int Tsize = 1 << L;
             int[] table = new int[Tsize];
 
-            // TRAIN
             int idx = 0;
-            for (int i = 0; i < Q2; i++)
+
+            for (int i = 0; i < Q; i++)
             {
                 int pattern = Convert.ToInt32(bits.Substring(idx, L), 2);
                 table[pattern] = i + 1;
                 idx += L;
             }
 
+            // ==========================
             // TEST
+            // ==========================
             double sum = 0.0;
-            for (int i = Q2; i < Q2 + K2; i++)
+
+            for (int i = Q; i < Q + K; i++)
             {
                 int pattern = Convert.ToInt32(bits.Substring(idx, L), 2);
+
                 sum += (i + 1) - table[pattern];
+
                 table[pattern] = i + 1;
                 idx += L;
             }
 
-            double fn = sum / K2;
+            double fn = sum / K;
 
-            // Expected values and variances from Table 4 (NIST SP800-22)
             double[] expected = {
-        0,0,0,0,0,0,
-        5.2177052,6.1962507,7.1836656,8.1764248,
-        9.1723243,10.170032,11.168765,12.168070,
-        13.167693,14.167488
-    };
+                0,0,0,0,0,0,
+                5.2177052, 6.1962507, 7.1836656, 8.1764248,
+                9.1723243,10.170032,11.168765,12.168070,
+               13.167693,14.167488
+            };
 
             double[] variance = {
-        0,0,0,0,0,0,
-        2.954,3.125,3.238,3.311,
-        3.356,3.384,3.401,3.410,
-        3.416,3.419
-    };
+                0,0,0,0,0,0,
+                2.954, 3.125, 3.238, 3.311,
+                3.356, 3.384, 3.401, 3.410,
+                3.416, 3.419
+            };
 
             double mu = expected[L];
             double var = variance[L];
 
             double z = (fn - mu) / Math.Sqrt(var);
 
-            // p-value = erfc(|z| / sqrt(2))
+            // p-value = erfc(|z|/√2)
             double pValue = Erfc(Math.Abs(z) / Math.Sqrt(2));
 
-            return Math.Round(pValue, 8);
+            return pValue;
         }
-
-
-        public double MaurersUniversalTestOnHashStream(Func<byte[], byte[]> hashFunction, int requiredBits = 200000)
-        {
-            // Защиты
-            if (hashFunction == null) throw new ArgumentNullException(nameof(hashFunction));
-            if (requiredBits < 10000) requiredBits = 10000; // минимальная защитная граница
-
-            // 1) Сгенерировать поток бит
-            string bits = GenerateHashStream(hashFunction, requiredBits);
-
-            // 2) Вызвать существующую реализацию Maurer (она у вас уже есть)
-            return MaurersUniversalTest(bits);
-        }
-
 
         #endregion
 
         #region Lempel Ziv Compression Test
         // Тест Лемпеля-Зива
+        // 1) Обёртка: генерируем поток хэшей (правильный padding) и запускаем тест
+        private const int LZ_MIN_BITS_REQUIRED = 1_500_000;
+
+        public double LempelZivCompressionTestOnHashStream(
+            Func<byte[], byte[]> hashFunction,
+            int requiredBits = LZ_MIN_BITS_REQUIRED)
+        {
+            string bits = GenerateHashStream(hashFunction, requiredBits);
+            return LempelZivCompressionTest(bits);
+        }
+
+        // 2) Основной тест Lempel-Ziv: делает парсинг по всей строке
         public double LempelZivCompressionTest(string bits)
         {
-            if (bits.Length < 256) return -1; 
+            int n = bits.Length;
+            if (n < LZ_MIN_BITS_REQUIRED)
+                return 0.0;
 
-            HashSet<string> dictionary = new();
-            string current = "";
-            int wordCount = 0;
+            int i = 0, k = 1, l = 1;
+            int c = 1;
 
-            foreach (char bit in bits)
+            while (true)
             {
-                current += bit;
-                if (!dictionary.Contains(current))
+                if (k + i >= n)
                 {
-                    dictionary.Add(current);
-                    wordCount++;
-                    current = "";
+                    c++;
+                    break;
+                }
+
+                if (bits[i + k] == bits[k - 1])
+                {
+                    i++;
+                    if (k + i == n)
+                    {
+                        c++;
+                        break;
+                    }
+                }
+                else
+                {
+                    if (i > l) l = i;
+                    k++;
+                    if (k > n)
+                        break;
+                    i = 0;
+                    c++;
                 }
             }
 
-            if (!string.IsNullOrEmpty(current)) wordCount++;
+            double log2n = Math.Log(n) / Math.Log(2);
 
-            double n = bits.Length;
-            double expected = n / Math.Log2(n);
-            double variance = 0.7 * n / Math.Pow(Math.Log2(n), 2);
+            double mu = n / log2n;
 
-            double z = (wordCount - expected) / Math.Sqrt(variance);
+            double sigma2 =
+                n * (Math.Log(Math.E, 2) - (2 - Math.Log(2 * Math.E, 2)))
+                / (log2n * log2n);
 
-            return 2 * (1 - NormalCDF(Math.Abs(z)));
+            double sigma = Math.Sqrt(sigma2);
+
+            double z = (c - mu) / sigma;
+
+            double pValue = 2.0 * (1.0 - NormalCDF(Math.Abs(z)));
+            return Math.Max(0.0, Math.Min(1.0, pValue));
         }
 
         #endregion
@@ -571,7 +552,7 @@ namespace The_complex_of_testing_hash_functions.Services
                 freq[pattern] = freq.GetValueOrDefault(pattern, 0) + 1;
             }
 
-            // Расчёт χ²
+            // Расчёт χ2
             double expected = (double)(n / m) / Math.Pow(2, m);
             double chiSquare = 0;
             foreach (var count in freq.Values)
@@ -579,7 +560,7 @@ namespace The_complex_of_testing_hash_functions.Services
                 chiSquare += Math.Pow(count - expected, 2) / expected;
             }
 
-            // Преобразование χ² в p-value
+            // Преобразование χ2 в p-value
             return ChiSquaredCDF(chiSquare, (int)Math.Pow(2, m) - 1);
         }
         #endregion
@@ -646,54 +627,82 @@ namespace The_complex_of_testing_hash_functions.Services
         // Тест случайных экскурсий
         public double RandomExcursionsTest(string bits)
         {
-            // Проверка минимальной длины (NIST требует минимум 10^6 бит)
-            if (bits.Length < 1000000) return -1;
+            int n = bits.Length;
+            if (n < 1_000_000)
+                return 0.0;
 
-            // Шаг 1: Строим последовательность частичных сумм
-            int[] S = new int[bits.Length + 1];
-            for (int i = 0; i < bits.Length; i++)
+            int[] x = new int[n];
+            for (int i = 0; i < n; i++)
+                x[i] = bits[i] == '1' ? 1 : -1;
+
+            int[] S = new int[n + 1];
+            for (int i = 0; i < n; i++)
+                S[i + 1] = S[i] + x[i];
+
+            List<int> cycles = new List<int>();
+            cycles.Add(0);
+            for (int i = 1; i <= n; i++)
+                if (S[i] == 0)
+                    cycles.Add(i);
+
+            int J = cycles.Count - 1;
+            if (J < 100)
+                return 0.0;
+
+            int[] states = { -4, -3, -2, -1, 1, 2, 3, 4 };
+
+            double pValueProduct = 1.0;
+
+            // Количество посещений
+            foreach (int s in states)
             {
-                S[i + 1] = S[i] + (bits[i] == '1' ? 1 : -1);
-            }
+                int K = 6; // number of bins
+                int[] frequencies = new int[K];
 
-            // Шаг 2: Находим все нулевые пересечения (J)
-            List<int> zeroCrossings = new();
-            for (int i = 1; i < S.Length; i++)
-            {
-                if (S[i] == 0) zeroCrossings.Add(i);
-            }
-            zeroCrossings.Add(S.Length - 1);
-
-            // Шаг 3: Считаем частоты состояний (-4..4)
-            int[,] v = new int[8, zeroCrossings.Count];
-            for (int k = 0; k < zeroCrossings.Count - 1; k++)
-            {
-                int start = zeroCrossings[k];
-                int end = zeroCrossings[k + 1];
-
-                for (int i = start + 1; i < end; i++)
+                for (int j = 0; j < J; j++)
                 {
-                    int state = Math.Clamp(S[i], -4, 4);
-                    if (state != 0) v[state + 4, k]++;
+                    int start = cycles[j];
+                    int end = cycles[j + 1];
+
+                    int v = 0;
+
+                    for (int i = start + 1; i <= end; i++)
+                        if (S[i] == s)
+                            v++;
+
+                    int idx = v >= 5 ? 5 : v;
+                    frequencies[idx]++;
                 }
-            }
 
-            // Шаг 4: Вычисляем χ² статистику
-            double[] pi = { 0.5, 0.25, 0.125, 0.0625, 0.03125, 0.015625, 0.0078125, 0.00390625 };
-            double chiSquare = 0;
+                double[] P = GetNistExcursionProbabilities(s);
 
-            for (int state = 0; state < 8; state++)
-            {
-                for (int k = 0; k < zeroCrossings.Count; k++)
+                double chi2 = 0.0;
+                for (int k = 0; k < 6; k++)
                 {
-                    double expected = pi[state] * zeroCrossings.Count;
-                    chiSquare += Math.Pow(v[state, k] - expected, 2) / expected;
+                    double expected = J * P[k];
+                    chi2 += Math.Pow(frequencies[k] - expected, 2.0) / expected;
                 }
+
+                double pValue = Igamc(2.5, chi2 / 2.0); // Complemented gamma (df=5)
+                pValueProduct *= pValue;
             }
 
-            // Шаг 5: Преобразуем в p-value
-            return ChiSquaredCDF(chiSquare, 7); // 7 степеней свободы
+            return pValueProduct;
         }
+
+        private double[] GetNistExcursionProbabilities(int s)
+        {
+            // NIST SP 800-22 Table 4
+            switch (Math.Abs(s))
+            {
+                case 1: return new[] { 0.5, 0.25, 0.125, 0.0625, 0.03125, 0.03125 };
+                case 2: return new[] { 0.75, 0.0625, 0.046875, 0.03515625, 0.0263672, 0.0791016 };
+                case 3: return new[] { 0.8333333, 0.0277778, 0.0185185, 0.0123457, 0.00823045, 0.099794 };
+                case 4: return new[] { 0.875, 0.015625, 0.00976562, 0.00610352, 0.0038147, 0.0890503 };
+                default: throw new ArgumentException("state must be 1..4");
+            }
+        }
+
         #endregion
 
         #region Random Excursions Variant Test
@@ -743,8 +752,22 @@ namespace The_complex_of_testing_hash_functions.Services
         }
         #endregion
 
+        #region For Random Excursions Test
+        public double RandomExcursionsTestOnHashStream(Func<byte[], byte[]> hashFunction, int requiredBits = 1_000_000)
+        {
+            string bits = GenerateHashStream(hashFunction, requiredBits);
+            return RandomExcursionsTest(bits);
+        }
+
+        public double RandomExcursionsVariantTestOnHashStream(Func<byte[], byte[]> hashFunction, int requiredBits = 1_000_000)
+        {
+            string bits = GenerateHashStream(hashFunction, requiredBits);
+            return RandomExcursionsVariantTest(bits);
+        }
+        #endregion
+
         #region Auxiliary calculation
-        // χ² CDF аппроксимация с помощью серии
+        // χ2 CDF аппроксимация с помощью серии
         public double ChiSquaredCDF(double x, int k)
         {
             if (x < 0 || k <= 0) return -1;
@@ -1005,36 +1028,33 @@ namespace The_complex_of_testing_hash_functions.Services
 
         public string GenerateHashStream(Func<byte[], byte[]> hashFunction, int requiredBits)
         {
-            if (hashFunction == null) throw new ArgumentNullException(nameof(hashFunction));
-            if (requiredBits <= 0) throw new ArgumentOutOfRangeException(nameof(requiredBits));
-
             var sb = new StringBuilder(requiredBits);
-            int counter = 0;
+            byte[] counter = new byte[8];
+
             while (sb.Length < requiredBits)
             {
-                byte[] input = BitConverter.GetBytes(counter++);
-                byte[] hash = hashFunction(input);
-                if (hash == null || hash.Length == 0) throw new InvalidOperationException("Hash function returned empty output.");
+                byte[] hash = hashFunction(counter);
 
-                // конвертируем байты в биты MSB..LSB
-                foreach (var b in hash)
+                foreach (byte b in hash)
                 {
                     for (int bit = 7; bit >= 0; bit--)
                     {
                         sb.Append(((b >> bit) & 1) == 1 ? '1' : '0');
-                        if (sb.Length >= requiredBits) break;
+                        if (sb.Length == requiredBits)
+                            return sb.ToString();
                     }
-                    if (sb.Length >= requiredBits) break;
+                }
+
+                // ++counter
+                for (int i = 0; i < 8; i++)
+                {
+                    counter[i]++;
+                    if (counter[i] != 0) break;
                 }
             }
+
             return sb.ToString();
         }
-
-        public double MaurersUniversalTestOnHashStream(string bits)
-        {
-            throw new NotImplementedException();
-        }
-
         #endregion
     }
 }
