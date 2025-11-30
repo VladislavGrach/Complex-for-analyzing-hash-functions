@@ -38,4 +38,15 @@ namespace Complex_for_analyzing_hash_functions.Helpers
             return doc2.RootElement.Clone();
         }
     }
+    public static class JsonSanitizer
+    {
+        public static double Fix(double value)
+        {
+            if (double.IsNaN(value)) return 0.0;
+            if (double.IsPositiveInfinity(value)) return 1.0;
+            if (double.IsNegativeInfinity(value)) return 0.0;
+            return value;
+        }
+    }
+
 }

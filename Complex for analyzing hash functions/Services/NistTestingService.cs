@@ -987,7 +987,7 @@ namespace The_complex_of_testing_hash_functions.Services
             return sum;
         }
 
-        private double Igamc(double a, double x)
+        public double Igamc(double a, double x)
         {
             // Используем аппроксимацию через регуляризованную верхнюю гамма-функцию
             // Q(a, x) = Γ(a, x) / Γ(a)
@@ -1026,35 +1026,81 @@ namespace The_complex_of_testing_hash_functions.Services
             return -tmp + Math.Log(2.5066282746310005 * ser / x);
         }
 
+        //public string GenerateHashStream(Func<byte[], byte[]> hashFunction, int requiredBits)
+        //{
+        //    var sb = new StringBuilder(requiredBits);
+        //    byte[] counter = new byte[8];
+
+        //    while (sb.Length < requiredBits)
+        //    {
+        //        byte[] hash = hashFunction(counter);
+
+        //        foreach (byte b in hash)
+        //        {
+        //            for (int bit = 7; bit >= 0; bit--)
+        //            {
+        //                sb.Append(((b >> bit) & 1) == 1 ? '1' : '0');
+        //                if (sb.Length == requiredBits)
+        //                    return sb.ToString();
+        //            }
+        //        }
+
+        //        // ++counter
+        //        for (int i = 0; i < 8; i++)
+        //        {
+        //            counter[i]++;
+        //            if (counter[i] != 0) break;
+        //        }
+        //    }
+
+        //    return sb.ToString();
+        //}
         public string GenerateHashStream(Func<byte[], byte[]> hashFunction, int requiredBits)
         {
-            var sb = new StringBuilder(requiredBits);
+            if (hashFunction == null)
+                throw new ArgumentNullException(nameof(hashFunction));
+
+            if (requiredBits <= 0)
+                throw new ArgumentOutOfRangeException(nameof(requiredBits));
+
+            // Ограничение на максимально возможный размер строки в .NET
+            // 2 млрд бит ~= 250 MB. Это предел.
+            const int MAX_BITS = 2_000_000_000;
+
+            if (requiredBits > MAX_BITS)
+                requiredBits = MAX_BITS; // защита от переполнений
+
+            var sb = new StringBuilder();
+
             byte[] counter = new byte[8];
 
             while (sb.Length < requiredBits)
             {
-                byte[] hash = hashFunction(counter);
+                byte[] input = counter.ToArray();
+                byte[] hash = hashFunction(input);
 
                 foreach (byte b in hash)
                 {
                     for (int bit = 7; bit >= 0; bit--)
                     {
                         sb.Append(((b >> bit) & 1) == 1 ? '1' : '0');
-                        if (sb.Length == requiredBits)
+
+                        if (sb.Length >= requiredBits)
                             return sb.ToString();
                     }
                 }
 
-                // ++counter
-                for (int i = 0; i < 8; i++)
+                // Инкремент счётчика
+                for (int i = 0; i < counter.Length; i++)
                 {
-                    counter[i]++;
-                    if (counter[i] != 0) break;
+                    if (++counter[i] != 0)
+                        break;
                 }
             }
 
             return sb.ToString();
         }
+
         #endregion
     }
 }

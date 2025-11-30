@@ -4,6 +4,7 @@ using Complex_for_analyzing_hash_functions.Services;
 using Complex_for_analyzing_hash_functions.Data;
 using Complex_for_analyzing_hash_functions.Interfaces;
 using System.Security.Policy;
+using Complex_for_analyzing_hash_functions.Helpers;
 
 namespace Complex_for_analyzing_hash_functions.Controllers
 {
@@ -101,9 +102,25 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             // ========== DIEHARD TESTS ==========
             double birthday = _diehard.BirthdaySpacingsTest(bits);
             double countOnes = _diehard.CountOnesTest(bits);
-            double rank = _diehard.RanksOfMatricesTest(bits);
+            //double rank = _diehard.RanksOfMatricesTest(bits);
+            double rank = _diehard.RanksOfMatricesTest(
+                bits,
+                hashFunction: input => _stats.Hash(input, p.Rounds)
+            );
+
             double overlapPerm = _diehard.OverlappingPermutationsTest(bits);
             double runsDiehard = _diehard.RunsTest(bits);
+            double gcdP = _diehard.GcdTest(
+                bits: "", // пустая строка — будет сделан padding
+                hashFunction: input => _stats.Hash(input, rounds: p.Rounds),
+                requiredWordsDefault: 200_000
+            );
+            double squeeze = _diehard.SqueezeTest(bits);
+            double craps = _diehard.CrapsTestOnHashStream(
+                input => _stats.Hash(input, p.Rounds),
+                requiredBits: 1_500_000
+            );
+
 
 
             // 7) Собираем всё в JSON и записываем в result.BitFlipJson
@@ -116,34 +133,40 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                     result.Rounds,
                     result.TestsCount
                 },
+
                 NIST = new
                 {
-                    Monobit = monobit,
-                    FrequencyWithinBlock = freqWithin,
-                    Runs = runsNist,
-                    LongestRunOfOnes = longestRun,
-                    BinaryMatrixRank = matrixRank,
-                    DiscreteFourier = dft,
-                    NonOverlappingTemplate = nonOverlap,
-                    OverlappingTemplate = overlap,
-                    MaurerUniversal = maurer,
-                    LempelZiv = lempelZiv,
-                    LinearComplexity = linearComplexity,
-                    Serial = serial,
-                    ApproximateEntropy = approxEntropy,
-                    Cusum = cusum,
-                    RandomExcursions = excursions,
-                    RandomExcursionsVariant = excursionsVar
+                    Monobit = JsonSanitizer.Fix(monobit),
+                    FrequencyWithinBlock = JsonSanitizer.Fix(freqWithin),
+                    Runs = JsonSanitizer.Fix(runsNist),
+                    LongestRunOfOnes = JsonSanitizer.Fix(longestRun),
+                    BinaryMatrixRank = JsonSanitizer.Fix(matrixRank),
+                    DiscreteFourier = JsonSanitizer.Fix(dft),
+                    NonOverlappingTemplate = JsonSanitizer.Fix(nonOverlap),
+                    OverlappingTemplate = JsonSanitizer.Fix(overlap),
+                    MaurerUniversal = JsonSanitizer.Fix(maurer),
+                    LempelZiv = JsonSanitizer.Fix(lempelZiv),
+                    LinearComplexity = JsonSanitizer.Fix(linearComplexity),
+                    Serial = JsonSanitizer.Fix(serial),
+                    ApproximateEntropy = JsonSanitizer.Fix(approxEntropy),
+                    Cusum = JsonSanitizer.Fix(cusum),
+                    RandomExcursions = JsonSanitizer.Fix(excursions),
+                    RandomExcursionsVariant = JsonSanitizer.Fix(excursionsVar)
                 },
+
                 Diehard = new
                 {
-                    BirthdaySpacings = birthday,
-                    CountOnes = countOnes,
-                    MatrixRanks = rank,
-                    OverlappingPermutations = overlapPerm,
-                    RunsDiehard = runsDiehard
+                    BirthdaySpacings = JsonSanitizer.Fix(birthday),
+                    CountOnes = JsonSanitizer.Fix(countOnes),
+                    MatrixRanks = JsonSanitizer.Fix(rank),
+                    OverlappingPermutations = JsonSanitizer.Fix(overlapPerm),
+                    RunsDiehard = JsonSanitizer.Fix(runsDiehard),
+                    GcdDiehard = JsonSanitizer.Fix(gcdP),
+                    SqueezeDiehard = JsonSanitizer.Fix(squeeze),
+                    CrapsDiehard = JsonSanitizer.Fix(craps)
                 }
             };
+
 
 
             result.BitFlipJson = System.Text.Json.JsonSerializer.Serialize(fullStats, new System.Text.Json.JsonSerializerOptions

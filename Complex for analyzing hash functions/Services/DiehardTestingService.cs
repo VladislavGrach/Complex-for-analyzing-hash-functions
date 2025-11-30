@@ -1,14 +1,16 @@
 ﻿using Complex_for_analyzing_hash_functions.Interfaces;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace The_complex_of_testing_hash_functions.Services
 {
     public class DiehardTestingService : NistTestingService, IDiehardTestingService
     {
         #region Birthday Spacings Test
-        // Тест дней рождения
+        //Тест дней рождения
         public double BirthdaySpacingsTest(string bits)
         {
             int m = bits.Length / 24; // Берем 24-битные числа
@@ -86,44 +88,68 @@ namespace The_complex_of_testing_hash_functions.Services
 
         #region Ranks Of Matrices Test
         // Тест рангов матриц
-        public double RanksOfMatricesTest(string bits)
+        public double RanksOfMatricesTest(string bits, Func<byte[], byte[]> hashFunction = null)
         {
-            int size = 32;
-            int matrixBits = size * size;
-            int numMatrices = bits.Length / matrixBits;
-            if (numMatrices < 1) return -1;
+            const int matrixSize = 32;
+            const int bitsPerMatrix = matrixSize * matrixSize; 
+            const int MIN_MATRICES = 200;                     
+
+            // --- STEP 1. PAD IF NEEDED ---
+            int requiredBits = MIN_MATRICES * bitsPerMatrix;
+
+            if (bits.Length < requiredBits)
+            {
+                if (hashFunction == null)
+                    throw new ArgumentException("Недостаточно бит и не передана hashFunction для padding.");
+
+                int missing = requiredBits - bits.Length;
+                string extra = GenerateHashStream(hashFunction, missing);
+                bits += extra;
+            }
+
+            int numMatrices = bits.Length / bitsPerMatrix;
+            if (numMatrices < 10) return -1; // минимальный порог
 
             int rank32 = 0, rank31 = 0, rank30 = 0;
 
-            for (int i = 0; i < numMatrices; i++)
-            {
-                int[,] matrix = new int[size, size];
+            int offset = 0;
 
-                for (int row = 0; row < size; row++)
+            for (int m = 0; m < numMatrices; m++)
+            {
+                int[,] A = new int[matrixSize, matrixSize];
+
+                for (int i = 0; i < matrixSize; i++)
                 {
-                    for (int col = 0; col < size; col++)
+                    for (int j = 0; j < matrixSize; j++)
                     {
-                        matrix[row, col] = bits[i * matrixBits + row * size + col] == '1' ? 1 : 0;
+                        A[i, j] = bits[offset++] - '0';
                     }
                 }
 
-                int rank = GetMatrixRank(matrix);
-                if (rank == 32) rank32++;
-                else if (rank == 31) rank31++;
+                int r = GF2Rank(A, matrixSize);
+
+                if (r == 32) rank32++;
+                else if (r == 31) rank31++;
                 else rank30++;
             }
 
-            double[] expectedProbs = { 0.2888, 0.5776, 0.1336 };
-            int[] observedCounts = { rank32, rank31, rank30 };
-            double[] expectedCounts = expectedProbs.Select(p => p * numMatrices).ToArray();
+            double p32 = 0.2887880950866024;
+            double p31 = 0.5775761901732048;
+            double p30 = 0.13363571474019285;
 
-            double chiSquare = 0;
-            for (int i = 0; i < 3; i++)
-            {
-                chiSquare += Math.Pow(observedCounts[i] - expectedCounts[i], 2) / expectedCounts[i];
-            }
+            double e32 = numMatrices * p32;
+            double e31 = numMatrices * p31;
+            double e30 = numMatrices * p30;
 
-            return 1.0 - ChiSquaredCDF(chiSquare, 2); // df = 3 - 1
+            double chi2 =
+                (Math.Pow(rank32 - e32, 2) / e32) +
+                (Math.Pow(rank31 - e31, 2) / e31) +
+                (Math.Pow(rank30 - e30, 2) / e30);
+
+            // df = 3 - 1 = 2 degrees of freedom
+            double pValue = 1.0 - ChiSquaredCDF(chi2, 2);
+
+            return Math.Max(0.0, Math.Min(1.0, pValue));
         }
         #endregion
 
@@ -154,35 +180,300 @@ namespace The_complex_of_testing_hash_functions.Services
 
         #region Runs Test
         // Тест серийности
-        public double RunsTest(string bits)
+        public double RunsTest(string bits, Func<byte[], byte[]> hashFunction = null)
         {
-            int n = bits.Length;
-            int onesCount = bits.Count(b => b == '1');
-            double pi = onesCount / (double)n;
+            const int BLOCK_SIZE = 20000;      // Размер блока Diehard
+            const int MIN_BLOCKS = 20;         // Минимум 20 блоков для устойчивой статистики
+            const int MIN_BITS = BLOCK_SIZE * MIN_BLOCKS;
 
-            // Если pi слишком далеко от 0.5, тест неприменим
-            if (Math.Abs(pi - 0.5) > 0.01)
-                return -1; // Недостаточно случайности в распределении единиц и нулей
-
-            // Подсчитываем количество смен (run)
-            int Vn = 1;
-            for (int i = 1; i < n; i++)
+            // Если мало бит → добиваем криптографическим padding
+            if (bits.Length < MIN_BITS)
             {
-                if (bits[i] != bits[i - 1])
-                    Vn++;
+                if (hashFunction == null)
+                    return -1;
+
+                int missing = MIN_BITS - bits.Length;
+                bits += GenerateHashStream(hashFunction, missing);
             }
 
-            // Вычисляем статистику Z (приближение нормального распределения)
-            double expectedRuns = 2 * n * pi * (1 - pi);
-            double variance = 2 * n * pi * (1 - pi) * (2 * pi * (1 - pi) - 1) + 1;
+            int totalBits = bits.Length;
+            int numBlocks = totalBits / BLOCK_SIZE;
 
-            // Иногда можно использовать упрощённую дисперсию:
-            variance = 2 * n * pi * (1 - pi);
+            if (numBlocks < 1)
+                return -1;
 
-            double z = (Vn - expectedRuns) / Math.Sqrt(variance);
+            // Счётчики серий: длина 1..6 (6 = категория "6 и больше")
+            long[] runCount = new long[6];
 
-            // Возвращаем p-value через стандартное нормальное распределение
-            return 2 * (1 - NormalCDF(Math.Abs(z)));
+            int offset = 0;
+
+            for (int b = 0; b < numBlocks; b++)
+            {
+                char prev = bits[offset];
+                int runLen = 1;
+
+                for (int i = 1; i < BLOCK_SIZE; i++)
+                {
+                    char cur = bits[offset + i];
+                    if (cur == prev)
+                    {
+                        runLen++;
+                    }
+                    else
+                    {
+                        int idx = Math.Min(runLen, 6) - 1;
+                        runCount[idx]++;
+
+                        runLen = 1;
+                        prev = cur;
+                    }
+                }
+
+                // последний run в блоке
+                int lastIdx = Math.Min(runLen, 6) - 1;
+                runCount[lastIdx]++;
+
+                offset += BLOCK_SIZE;
+            }
+
+            long totalRuns = runCount.Sum();
+
+            // Ожидаемые вероятности (из оригинального Diehard)
+            double[] p = {
+                0.5,        // длина 1
+                0.25,       // длина 2
+                0.125,      // 3
+                0.0625,     // 4
+                0.03125,    // 5
+                0.03125     // >= 6
+            };
+
+            // χ²
+            double chi2 = 0.0;
+
+            for (int i = 0; i < 6; i++)
+            {
+                double expected = totalRuns * p[i];
+                double observed = runCount[i];
+
+                if (expected > 0)
+                    chi2 += (observed - expected) * (observed - expected) / expected;
+            }
+
+            // Степени свободы: 6 категорий – 1 = 5
+            double pValue = 1.0 - ChiSquaredCDF(chi2, 5);
+
+            return Math.Max(0.0, Math.Min(1.0, pValue));
+        }
+
+        #endregion
+
+        #region Gcd Test
+        public double GcdTest(string bits, Func<byte[], byte[]>? hashFunction = null, int requiredWordsDefault = 100_000)
+        {
+            const double EXPECTED_COPRIME = 6.0 / (Math.PI * Math.PI); // ≈0.607927
+
+            // если передали hashFunction и вход короткий — дополняем
+            if ((bits?.Length ?? 0) < 32 * requiredWordsDefault)
+            {
+                if (hashFunction == null)
+                    return -1.0; // недостаточно данных и нет способа pad'а
+
+                bits = GenerateHashStream(hashFunction, requiredWordsDefault * 32);
+            }
+
+            if (string.IsNullOrEmpty(bits) || bits.Length < 64)
+                return -1.0;
+
+            long pairs = 0;
+            long coprimeCount = 0;
+
+            // Проходим по словам подряд (в потоковом режиме, без лишнего аллока)
+            int pos = 0;
+            uint prev = 0;
+            bool havePrev = false;
+
+            while (pos + 32 <= bits.Length)
+            {
+                uint w = Convert.ToUInt32(bits.Substring(pos, 32), 2);
+                pos += 32;
+
+                if (!havePrev)
+                {
+                    prev = w;
+                    havePrev = true;
+                    continue;
+                }
+
+                pairs++;
+                if (Gcd32(prev, w) == 1U) coprimeCount++;
+
+                prev = w;
+            }
+
+            if (pairs == 0) return -1.0;
+
+            double pObs = coprimeCount / (double)pairs;
+            double expected = EXPECTED_COPRIME;
+
+            // дисперсия для биномиального приближения
+            double var = expected * (1 - expected) / (double)pairs;
+            if (var <= 0 || double.IsNaN(var)) return 0.0;
+
+            double z = (pObs - expected) / Math.Sqrt(var);
+            double pValue = 2.0 * (1.0 - NormalCDF(Math.Abs(z)));
+
+            // защита от числовых артефактов
+            if (double.IsNaN(pValue)) pValue = 0.0;
+            return Math.Max(0.0, Math.Min(1.0, pValue));
+        }
+
+        private static uint Gcd32(uint a, uint b)
+        {
+            // быстрый евклид для unsigned
+            if (a == 0) return b;
+            if (b == 0) return a;
+            while (b != 0)
+            {
+                uint t = a % b;
+                a = b;
+                b = t;
+            }
+            return a;
+        }
+
+        #endregion
+
+        #region Squeeze Test
+        public double SqueezeTest(string bits)
+        {
+            const int N = 100_000;
+            const int K = 23;
+            const int MIN_BITS_REQUIRED = N * 6;
+
+            var values = new List<int>(N);
+            int bitPos = 0;
+
+            while (values.Count < N && bitPos + 6 <= bits.Length)
+            {
+                string chunk = bits.Substring(bitPos, 6);
+                int num = Convert.ToInt32(chunk, 2);
+                if (num < K)
+                    values.Add(num);
+                bitPos += 6;
+            }
+
+            int actualN = values.Count;
+            int squeezeCount = 0;
+            long current = 1;
+
+            foreach (int v in values)
+            {
+                if (v == 0)
+                    current = 1;
+                else
+                {
+                    current *= v;
+                    if (current >= 8_388_608L)
+                    {
+                        squeezeCount++;
+                        current = 1;
+                    }
+                }
+            }
+
+            double expected = (double)actualN / K;
+            double variance = expected * (1.0 + 1.0 / K);
+            double z = (squeezeCount - expected) / Math.Sqrt(variance);
+            double pValue = 2.0 * (1.0 - NormalCDF(Math.Abs(z)));
+
+            return Math.Max(0.0, Math.Min(1.0, pValue));
+        }
+        #endregion
+
+        #region Craps Test
+        public double CrapsTest(string bits)
+        {
+            const int GAMES = 200_000;
+            const int MIN_BITS_REQUIRED = 10_000_000; // большой запас
+
+            if (bits.Length < MIN_BITS_REQUIRED)
+            {
+                var sb = new StringBuilder(MIN_BITS_REQUIRED);
+                while (sb.Length < MIN_BITS_REQUIRED)
+                    sb.Append(bits);
+                bits = sb.ToString(0, MIN_BITS_REQUIRED);
+            }
+
+            int bitPos = 0;
+
+            int ReadBits(int count)
+            {
+                if (bitPos + count > bits.Length) return 0;
+                int v = 0;
+                for (int i = 0; i < count; i++)
+                    v = (v << 1) | (bits[bitPos++] - '0');
+                return v;
+            }
+
+            int GetDie()
+            {
+                while (bitPos + 3 <= bits.Length)
+                {
+                    int v = ReadBits(3);
+                    if (v <= 5)
+                        return 1 + v;    // 1..6
+                                         // иначе — отбрасываем, но bitPos уже сдвинут — это нормально
+                }
+                return 4; // если кончились биты — нейтральное значение
+            }
+
+            int wins = 0;
+
+            for (int game = 0; game < GAMES; game++)
+            {
+                int d1 = GetDie();
+                int d2 = GetDie();
+                int sum = d1 + d2;
+
+                if (sum == 7 || sum == 11)
+                {
+                    wins++;
+                    continue;
+                }
+                if (sum == 2 || sum == 3 || sum == 12)
+                {
+                    continue; // проигрыш
+                }
+
+                int point = sum;
+                while (bitPos + 6 <= bits.Length)
+                {
+                    sum = GetDie() + GetDie();
+                    if (sum == 7) break;
+                    if (sum == point)
+                    {
+                        wins++;
+                        break;
+                    }
+                }
+            }
+
+            const double P = 244.0 / 495.0;
+            double expected = P * GAMES;
+            double variance = GAMES * P * (1 - P);
+            double z = (wins - expected) / Math.Sqrt(variance);
+            double pValue = 2 * (1 - NormalCDF(Math.Abs(z)));
+
+            return pValue;
+        }
+
+        public double CrapsTestOnHashStream(
+            Func<byte[], byte[]> hashFunction,
+            int requiredBits = 1_500_000)
+        {
+            string bits = GenerateHashStream(hashFunction, requiredBits);
+            return CrapsTest(bits);
         }
         #endregion
 
@@ -206,39 +497,54 @@ namespace The_complex_of_testing_hash_functions.Services
             return result;
         }
 
-        private int GetMatrixRank(int[,] matrix)
+        private int GF2Rank(int[,] A, int N)
         {
             int rank = 0;
-            int size = matrix.GetLength(0);
-            bool[] rowUsed = new bool[size];
+            int row = 0;
 
-            for (int col = 0; col < size; col++)
+            for (int col = 0; col < N; col++)
             {
-                int row = -1;
-                for (int i = 0; i < size; i++)
+                int pivot = -1;
+
+                for (int r = row; r < N; r++)
                 {
-                    if (!rowUsed[i] && matrix[i, col] == 1)
+                    if (A[r, col] == 1)
                     {
-                        row = i;
+                        pivot = r;
                         break;
                     }
                 }
 
-                if (row == -1) continue;
+                if (pivot == -1)
+                    continue;
 
-                rank++;
-                rowUsed[row] = true;
-
-                for (int i = 0; i < size; i++)
+                // Swap pivot row ↔ current row
+                if (pivot != row)
                 {
-                    if (i != row && matrix[i, col] == 1)
+                    for (int c = 0; c < N; c++)
                     {
-                        for (int j = 0; j < size; j++)
+                        int tmp = A[pivot, c];
+                        A[pivot, c] = A[row, c];
+                        A[row, c] = tmp;
+                    }
+                }
+
+                // Eliminate in all other rows
+                for (int r = 0; r < N; r++)
+                {
+                    if (r != row && A[r, col] == 1)
+                    {
+                        for (int c = 0; c < N; c++)
                         {
-                            matrix[i, j] ^= matrix[row, j];
+                            A[r, c] ^= A[row, c];
                         }
                     }
                 }
+
+                row++;
+                rank++;
+
+                if (row == N) break;
             }
 
             return rank;
