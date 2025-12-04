@@ -14,18 +14,21 @@ namespace Complex_for_analyzing_hash_functions.Controllers
         private readonly ApplicationDbContext _db;
         private readonly INistTestingService _nist;
         private readonly IDiehardTestingService _diehard;
+        private readonly ITestU01Service _testu01;
 
         public HashTestController(
             StatisticsService stats,
             ApplicationDbContext db,
             INistTestingService nist,
-            IDiehardTestingService diehard)
+            IDiehardTestingService diehard,
+            ITestU01Service testu01)
                 {
                     _stats = stats;
                     _db = db;
                     _nist = nist;
                     _diehard = diehard;
-                }
+                    _testu01 = testu01;
+        }
 
         [HttpGet]
         public IActionResult Index()
@@ -123,6 +126,25 @@ namespace Complex_for_analyzing_hash_functions.Controllers
 
 
 
+            // =========== TestU01 ============
+            double collisionU01 = _testu01.CollisionTestOnHashStream(
+                hashFunction: input => _stats.Hash(input, p.Rounds),
+                requiredBits: 15_000_000,   
+                t: 20,
+                n: 500_000
+            );
+            double gapU01 = _testu01.GapTestOnHashStream(
+                input => _stats.Hash(input, p.Rounds)
+            );
+            double autoU01 = _testu01.AutocorrelationTestOnHashStream(
+                input => _stats.Hash(input, p.Rounds)
+            );
+            double spectralU01 = _testu01.SpectralTestOnHashStream(
+                input => _stats.Hash(input, p.Rounds)
+            );
+
+
+
             // 7) Собираем всё в JSON и записываем в result.BitFlipJson
             var fullStats = new
             {
@@ -164,6 +186,14 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                     GcdDiehard = JsonSanitizer.Fix(gcdP),
                     SqueezeDiehard = JsonSanitizer.Fix(squeeze),
                     CrapsDiehard = JsonSanitizer.Fix(craps)
+                },
+
+                TestU01 = new
+                {
+                    Collision = JsonSanitizer.Fix(collisionU01),
+                    Gap = JsonSanitizer.Fix(gapU01),
+                    Autocorrelation = JsonSanitizer.Fix(autoU01),
+                    Spectral = JsonSanitizer.Fix(spectralU01)
                 }
             };
 

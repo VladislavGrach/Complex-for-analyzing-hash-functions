@@ -13,6 +13,7 @@ builder.Services.AddScoped<IHashFunction, KeccakHash>();
 builder.Services.AddScoped<StatisticsService>();
 builder.Services.AddSingleton<INistTestingService, NistTestingService>();
 builder.Services.AddSingleton<IDiehardTestingService, DiehardTestingService>();
+builder.Services.AddSingleton<ITestU01Service, TestU01Service>();
 
 
 // Add services to the container.
