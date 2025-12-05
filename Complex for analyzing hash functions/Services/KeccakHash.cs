@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Complex_for_analyzing_hash_functions.Interfaces;
+using System;
 
 namespace Complex_for_analyzing_hash_functions.Services
 {

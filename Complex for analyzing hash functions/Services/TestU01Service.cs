@@ -231,71 +231,45 @@ namespace Complex_for_analyzing_hash_functions.Services
         #endregion
 
         #region Spectral Test
-        //public double SpectralTest(string bits)
-        //{
-        //    int n = bits.Length;
-        //    if (n < 4096) return 0.5;
-
-        //    int N = 1;
-        //    while (N < n) N <<= 1;
-
-        //    var x = new Complex[N];
-        //    for (int i = 0; i < n; i++)
-        //        x[i] = bits[i] == '1' ? 1.0 : -1.0;
-
-        //    FFT(x);
-
-        //    int N2 = N / 2;
-        //    double T = Math.Log(20.0);  // ← ВОТ ЭТО — ГЛАВНАЯ ИСПРАВЛЕННАЯ СТРОКА!!!
-
-        //    int countBelow = 0;
-        //    for (int k = 1; k < N2; k++)
-        //    {
-        //        double S = (x[k].Real * x[k].Real + x[k].Imaginary * x[k].Imaginary) / N;
-        //        if (S < T)
-        //            countBelow++;
-        //    }
-
-        //    double expected = 0.95 * (N2 - 1);
-        //    double variance = N * 0.95 * 0.05;
-        //    double d = (countBelow - expected) / Math.Sqrt(variance);
-        //    double pValue = Math.Exp(-0.5 * d * d);
-
-        //    return Math.Clamp(pValue, 0.0, 1.0);
-        //}
         public double SpectralTest(string bits)
         {
             int n = bits.Length;
-            if (n < 4096) return 0.5;
+            if (n < 1024) return 0.5;
 
+            // Берём ближайшую степень 2 МЕНЬШЕ либо равную n
             int N = 1;
-            while (N < n) N <<= 1;
+            while ((N << 1) <= n) N <<= 1;
 
-            var x = new Complex[N];
-            for (int i = 0; i < n; i++)
-                x[i] = bits[i] == '1' ? 1.0 : -1.0;
+            var X = new Complex[N];
+            for (int i = 0; i < N; i++)
+                X[i] = bits[i] == '1' ? 1.0 : -1.0;
 
-            FFT(x);
+            FFT(X);
 
             int N2 = N / 2;
-            double T = Math.Log(20.0);  // ≈ 2.9957
+
+            // Порог NIST
+            double T = Math.Sqrt(Math.Log(1.0 / 0.05) * N); // sqrt(ln(20) * N)
 
             int countBelow = 0;
-            for (int k = 1; k < N2; k++)
+            for (int k = 1; k < N2; k++)  // пропускаем k=0 (DC)
             {
-                double S = (x[k].Real * x[k].Real + x[k].Imaginary * x[k].Imaginary) / N;
-                if (S < T)
+                double mag = X[k].Magnitude; // амплитуда
+                if (mag < T)
                     countBelow++;
             }
 
-            double expected = 0.95 * (N2 - 1);
-            double variance = 0.95 * 0.05 * N / 2.0;  // ← ЭТО КРИТИЧЕСКИ ВАЖНО: / 2.0
-            double d = (countBelow - expected) / Math.Sqrt(variance);
+            double N0 = 0.95 * N2;
+            double variance = N * 0.95 * 0.05 / 4.0;
 
-            double pValue = Math.Exp(-d * d);  // ← без 0.5!
+            double d = (countBelow - N0) / Math.Sqrt(variance);
 
-            return Math.Clamp(pValue, 0.0, 1.0);
+            // Правильное p-value (NIST)
+            double p = Erfc(Math.Abs(d) / Math.Sqrt(2));
+
+            return Math.Clamp(p, 0.0, 1.0);
         }
+
         public double SpectralTestOnHashStream(
             Func<byte[], byte[]> hashFunction,
             int requiredBits = 1_000_000)
@@ -308,6 +282,411 @@ namespace Complex_for_analyzing_hash_functions.Services
 
             string bits = GenerateHashStream(hashFunction, requiredBits);
             return SpectralTest(bits);
+        }
+        #endregion
+
+        #region Hamming Weight Test
+        public double HammingWeightTest(
+                string bits,
+                int L = 32,          // длина блока
+                int K = 256,         // число блоков в суперблоке
+                int S = 10000        // число суперблоков
+            )
+        {
+            int blockSize = L;
+            int superBlockSize = L * K;
+            int requiredBits = superBlockSize * S;
+
+            // === padding, если бит недостаточно ===
+            if (bits.Length < requiredBits)
+            {
+                var sb = new StringBuilder(requiredBits);
+                while (sb.Length < requiredBits)
+                    sb.Append(bits);
+                bits = sb.ToString(0, requiredBits);
+            }
+
+            int pos = 0;
+
+            // Параметры биномиального распределения
+            double meanBlock = L / 2.0;
+            double varBlock = L * 0.25;          // Var(binomial)
+            double meanSuper = K * meanBlock;
+            double varSuper = K * varBlock;
+
+            // χ² статистика сумм суперблоков
+            double chi2 = 0.0;
+
+            for (int s = 0; s < S; s++)
+            {
+                double sum = 0;
+
+                for (int k = 0; k < K; k++)
+                {
+                    // считаем Hamming weight блока
+                    int weight = 0;
+                    for (int j = 0; j < L; j++)
+                        if (bits[pos++] == '1')
+                            weight++;
+
+                    sum += weight;
+                }
+
+                double diff = sum - meanSuper;
+                chi2 += diff * diff / varSuper;
+            }
+
+            // p-value из χ² с S степенями свободы
+            double pValue = 1.0 - ChiSquaredCDF(chi2, S);
+
+            if (double.IsNaN(pValue) || double.IsInfinity(pValue))
+                pValue = 0.0;
+
+            return Math.Clamp(pValue, 0.0, 1.0);
+        }
+
+        public double HammingWeightTestOnHashStream(
+            Func<byte[], byte[]> hashFunction,
+            int L = 32,
+            int K = 256,
+            int S = 10000
+        )
+        {
+            if (hashFunction == null)
+                throw new ArgumentNullException(nameof(hashFunction));
+
+            int requiredBits = L * K * S;
+
+            string bits = GenerateHashStream(hashFunction, requiredBits);
+
+            return HammingWeightTest(bits, L, K, S);
+        }
+        #endregion
+
+        #region Serial Test
+        public double SerialTest(string bits, int t = 2, int k = 2, int n = 500000)
+        {
+            if (t <= 0 || t > 10) throw new ArgumentOutOfRangeException(nameof(t));
+            if (k < 2 || k > 5) throw new ArgumentOutOfRangeException(nameof(k));
+
+            int M = 1 << t;           // алфавит
+            int K = (int)Math.Pow(M, k);      // кол-во k-tuple
+            int K1 = (int)Math.Pow(M, k - 1);  // кол-во (k-1)-tuple
+
+            int requiredBits = t * (n + k);  // запас на k-шаг
+            if (bits.Length < requiredBits)
+            {
+                var sb = new StringBuilder(requiredBits);
+                while (sb.Length < requiredBits)
+                    sb.Append(bits);
+                bits = sb.ToString(0, requiredBits);
+            }
+
+            // 1. Читаем X_i
+            int[] X = new int[n + k];
+            int pos = 0;
+
+            for (int i = 0; i < X.Length; i++)
+            {
+                int v = 0;
+                for (int j = 0; j < t; j++)
+                    v = (v << 1) | (bits[pos++] - '0');
+                X[i] = v;
+            }
+
+            // 2. Считаем k-tuple
+            long[] freqK = new long[K];
+            long[] freqK1 = new long[K1];
+
+            int tuples = n;
+
+            for (int i = 0; i < tuples; i++)
+            {
+                // k-tuple ID
+                int id = 0;
+                for (int j = 0; j < k; j++)
+                    id = id * M + X[i + j];
+                freqK[id]++;
+
+                // (k-1)-tuple
+                int id1 = 0;
+                for (int j = 0; j < k - 1; j++)
+                    id1 = id1 * M + X[i + j];
+                freqK1[id1]++;
+            }
+
+            // 3. Ожидания
+            double EK = (double)tuples / K;
+            double EK1 = (double)tuples / K1;
+
+            // 4. χ²_k
+            double chiK = 0.0;
+            for (int i = 0; i < K; i++)
+            {
+                double diff = freqK[i] - EK;
+                chiK += diff * diff / EK;
+            }
+
+            // 5. χ²_{k-1}
+            double chiK1val = 0.0;
+            for (int i = 0; i < K1; i++)
+            {
+                double diff = freqK1[i] - EK1;
+                chiK1val += diff * diff / EK1;
+            }
+
+            // 6. Финальная статистика TestU01:
+            double stat = chiK - chiK1val;
+
+            int df = K - K1;
+
+            double pValue = 1.0 - ChiSquaredCDF(stat, df);
+            if (double.IsNaN(pValue) || double.IsInfinity(pValue)) pValue = 0.0;
+
+            return Math.Clamp(pValue, 0.0, 1.0);
+        }
+        public double SerialTestOnHashStream(
+            Func<byte[], byte[]> hashFunction,
+            int t = 2,
+            int k = 2,
+            int n = 500000)
+        {
+            int required = t * (n + k);
+            string bits = GenerateHashStream(hashFunction, required);
+            return SerialTest(bits, t, k, n);
+        }
+        #endregion
+
+        #region Multinomia lTest
+        public double MultinomialTest(string bits, int t = 2, int k = 3, int n = 200000)
+        {
+            if (t <= 0 || t > 10) throw new ArgumentOutOfRangeException(nameof(t));
+            if (k < 1 || k > 6) throw new ArgumentOutOfRangeException(nameof(k));
+
+            int M = 1 << t;            // алфавит
+            int K = (int)Math.Pow(M, k);  // количество возможных k-tuple
+
+            int requiredBits = t * (n + k);
+            if (bits.Length < requiredBits)
+            {
+                var sb = new StringBuilder(requiredBits);
+                while (sb.Length < requiredBits)
+                    sb.Append(bits);
+                bits = sb.ToString(0, requiredBits);
+            }
+
+            // 1. Преобразуем в числа
+            int[] X = new int[n + k];
+            int pos = 0;
+
+            for (int i = 0; i < X.Length; i++)
+            {
+                int v = 0;
+                for (int j = 0; j < t; j++)
+                    v = (v << 1) | (bits[pos++] - '0');
+                X[i] = v;
+            }
+
+            // 2. Частоты k-tuple
+            long[] freq = new long[K];
+
+            for (int i = 0; i < n; i++)
+            {
+                int id = 0;
+                for (int j = 0; j < k; j++)
+                    id = id * M + X[i + j];
+                freq[id]++;
+            }
+
+            // 3. Ожидания (равномерно)
+            double E = (double)n / K;
+            if (E < 5.0)
+            {
+                // TestU01 требует минимум E>=5
+                // иначе тест некорректный
+                return 0.0;
+            }
+
+            // 4. χ²
+            double chi2 = 0.0;
+            for (int i = 0; i < K; i++)
+            {
+                double diff = freq[i] - E;
+                chi2 += diff * diff / E;
+            }
+
+            int df = K - 1;
+            double pValue = 1.0 - ChiSquaredCDF(chi2, df);
+
+            if (double.IsNaN(pValue) || double.IsInfinity(pValue))
+                pValue = 0.0;
+
+            return Math.Clamp(pValue, 0.0, 1.0);
+        }
+        public double MultinomialTestOnHashStream(
+            Func<byte[], byte[]> hashFunction,
+            int t = 2,
+            int k = 3,
+            int n = 200000)
+        {
+            int requiredBits = t * (n + k);
+
+            string bits = GenerateHashStream(hashFunction, requiredBits);
+            return MultinomialTest(bits, t, k, n);
+        }
+        #endregion
+
+        #region Close Pairs Test
+        public double ClosePairsTest(string bits, int t = 20, int n = 200000, int k = 256)
+        {
+            if (bits.Length < n * t)
+                return 0.0;
+
+            double[] u = new double[n];
+            int pos = 0;
+
+            // bits → U(0,1)
+            for (int i = 0; i < n; i++)
+            {
+                int v = 0;
+                for (int j = 0; j < t; j++)
+                    v = (v << 1) | (bits[pos++] - '0');
+
+                u[i] = v / (double)(1 << t);
+            }
+
+            int[] counts = new int[k];
+
+            // распределяем по корзинам
+            for (int i = 0; i < n; i++)
+            {
+                int cell = (int)(u[i] * k);
+                if (cell == k) cell = k - 1;
+                counts[cell]++;
+            }
+
+            double expected = (double)n / k;
+
+            // χ²
+            double chi2 = 0.0;
+            for (int i = 0; i < k; i++)
+            {
+                double diff = counts[i] - expected;
+                chi2 += diff * diff / expected;
+            }
+
+            int df = k - 1;
+            double pValue = 1.0 - ChiSquaredCDF(chi2, df);
+
+            if (double.IsNaN(pValue) || double.IsInfinity(pValue))
+                return 0.0;
+
+            return Math.Clamp(pValue, 0.0, 1.0);
+        }
+
+        public double ClosePairsTestOnHashStream(
+            Func<byte[], byte[]> hashFunction,
+            int requiredBits = 20 * 200000,
+            int t = 20,
+            int n = 200000,
+            int k = 256)
+        {
+            if (hashFunction == null)
+                throw new ArgumentNullException(nameof(hashFunction));
+
+            if (requiredBits < n * t)
+                requiredBits = n * t;
+
+            string bits = GenerateHashStream(hashFunction, requiredBits);
+            return ClosePairsTest(bits, t, n, k);
+        }
+        #endregion
+
+        #region Coupon Collector Test
+        private static readonly Dictionary<int, (double mean, double variance)> CouponMoments =
+            new()
+            {
+                { 16, (52.344, 19.302) },
+                { 32, (131.704, 49.305) },
+                { 64, (320.32,  117.10) }
+            };
+        public double CouponCollectorTest(string bits, int t = 5, int S = 200)
+        {
+            int d = 1 << t; // количество купонов
+
+            if (!CouponMoments.TryGetValue(d, out var mv))
+                throw new ArgumentException($"Нет табличных значений для d={d}");
+
+            double mean = mv.mean;
+            double variance = mv.variance;
+
+            // Требуемая длина (запас)
+            int bitsPerCoupon = t;
+            int expectedDraws = (int)(mean + 5 * Math.Sqrt(variance));
+            int bitsPerTrial = bitsPerCoupon * expectedDraws;
+            int requiredBits = S * bitsPerTrial;
+
+            if (bits.Length < requiredBits)
+                return 0.0;
+
+            int pos = 0;
+
+            int ReadCoupon()
+            {
+                int v = 0;
+                for (int i = 0; i < t; i++)
+                    v = (v << 1) | (bits[pos++] - '0');
+                return v;
+            }
+
+            double[] X = new double[S];
+
+            for (int s = 0; s < S; s++)
+            {
+                var seen = new bool[d];
+                int countSeen = 0;
+                int draws = 0;
+
+                while (countSeen < d)
+                {
+                    if (pos + t >= bits.Length)
+                        return 0.0;
+
+                    int c = ReadCoupon();
+                    draws++;
+
+                    if (!seen[c])
+                    {
+                        seen[c] = true;
+                        countSeen++;
+                    }
+                }
+
+                X[s] = draws;
+            }
+
+            // z-тест
+            double sampleMean = X.Average();
+            double z = (sampleMean - mean) / Math.Sqrt(variance / S);
+
+            double pValue = 2.0 * (1.0 - NormalCDF(Math.Abs(z)));
+
+            return Math.Clamp(pValue, 0.0, 1.0);
+        }
+        public double CouponCollectorTestOnHashStream(
+            Func<byte[], byte[]> hashFunction,
+            int t = 5,
+            int S = 200,
+            int requiredBits = 4_000_000)
+        {
+            if (hashFunction == null)
+                throw new ArgumentNullException(nameof(hashFunction));
+
+            if (requiredBits < 2_000_000)
+                requiredBits = 2_000_000;
+
+            string bits = GenerateHashStream(hashFunction, requiredBits);
+            return CouponCollectorTest(bits, t, S);
         }
 
         #endregion
@@ -500,6 +879,27 @@ namespace Complex_for_analyzing_hash_functions.Services
                     }
                 }
             }
+        }
+        public double NormalCDF(double x)
+        {
+            if (double.IsNaN(x))
+                return 0.0;
+
+            if (double.IsPositiveInfinity(x))
+                return 1.0;
+
+            if (double.IsNegativeInfinity(x))
+                return 0.0;
+
+            // Используем свойство симметрии для отрицательных x
+            if (x < 0)
+                return 1.0 - NormalCDF(-x);
+
+            // Для больших x возвращаем 1.0 (избегаем численных погрешностей)
+            if (x > 8.0)
+                return 1.0;
+
+            return 1.0 - 0.5 * Erfc(x / Math.Sqrt(2));
         }
         #endregion
     }

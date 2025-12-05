@@ -1,4 +1,4 @@
-﻿namespace Complex_for_analyzing_hash_functions.Services
+﻿namespace Complex_for_analyzing_hash_functions.Interfaces
 {
     public interface IHashFunction
     {

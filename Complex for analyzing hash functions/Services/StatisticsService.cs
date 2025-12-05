@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Complex_for_analyzing_hash_functions.Interfaces;
 using Complex_for_analyzing_hash_functions.Models;
 
 namespace Complex_for_analyzing_hash_functions.Services

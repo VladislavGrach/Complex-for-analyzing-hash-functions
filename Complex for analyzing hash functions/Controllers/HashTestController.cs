@@ -142,6 +142,22 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             double spectralU01 = _testu01.SpectralTestOnHashStream(
                 input => _stats.Hash(input, p.Rounds)
             );
+            double hammingU01 = _testu01.HammingWeightTestOnHashStream(
+                input => _stats.Hash(input, p.Rounds)
+            );
+            double serialU01 = _testu01.SerialTestOnHashStream(
+                input => _stats.Hash(input, p.Rounds)
+            );
+            double multinomialU01 = _testu01.MultinomialTestOnHashStream(
+                input => _stats.Hash(input, p.Rounds)
+            );
+            double closePairsU01 = _testu01.ClosePairsTestOnHashStream(
+                input => _stats.Hash(input, p.Rounds)
+            );
+            double couponU01 = _testu01.CouponCollectorTestOnHashStream(
+                input => _stats.Hash(input, p.Rounds)
+            );
+
 
 
 
@@ -193,7 +209,12 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                     Collision = JsonSanitizer.Fix(collisionU01),
                     Gap = JsonSanitizer.Fix(gapU01),
                     Autocorrelation = JsonSanitizer.Fix(autoU01),
-                    Spectral = JsonSanitizer.Fix(spectralU01)
+                    Spectral = JsonSanitizer.Fix(spectralU01),
+                    HammingWeight = JsonSanitizer.Fix(hammingU01),
+                    SerialTest = JsonSanitizer.Fix(serialU01),
+                    MultinomialTest = JsonSanitizer.Fix(multinomialU01),
+                    ClosePairs = JsonSanitizer.Fix(closePairsU01),
+                    CouponCollector = JsonSanitizer.Fix(couponU01)
                 }
             };
 
