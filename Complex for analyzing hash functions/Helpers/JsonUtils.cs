@@ -47,6 +47,22 @@ namespace Complex_for_analyzing_hash_functions.Helpers
             if (double.IsNegativeInfinity(value)) return 0.0;
             return value;
         }
+        public static double[][] ToJagged(double[,] matrix)
+        {
+            int rows = matrix.GetLength(0);
+            int cols = matrix.GetLength(1);
+            double[][] jagged = new double[rows][];
+
+            for (int i = 0; i < rows; i++)
+            {
+                jagged[i] = new double[cols];
+                for (int j = 0; j < cols; j++)
+                    jagged[i][j] = matrix[i, j];
+            }
+
+            return jagged;
+        }
+
     }
 
 }

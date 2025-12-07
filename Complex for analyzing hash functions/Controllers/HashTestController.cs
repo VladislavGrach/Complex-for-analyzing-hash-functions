@@ -15,20 +15,27 @@ namespace Complex_for_analyzing_hash_functions.Controllers
         private readonly INistTestingService _nist;
         private readonly IDiehardTestingService _diehard;
         private readonly ITestU01Service _testu01;
+        private readonly IAvalancheService _avalanche;
+        private readonly IBitIndependenceService _bic;
 
         public HashTestController(
-            StatisticsService stats,
-            ApplicationDbContext db,
-            INistTestingService nist,
-            IDiehardTestingService diehard,
-            ITestU01Service testu01)
-                {
-                    _stats = stats;
-                    _db = db;
-                    _nist = nist;
-                    _diehard = diehard;
-                    _testu01 = testu01;
+            StatisticsService stats, 
+            ApplicationDbContext db, 
+            INistTestingService nist, 
+            IDiehardTestingService diehard, 
+            ITestU01Service testu01, 
+            IAvalancheService avalanche,
+            IBitIndependenceService bic)
+        {
+            _stats = stats;
+            _db = db;
+            _nist = nist;
+            _diehard = diehard;
+            _testu01 = testu01;
+            _avalanche = avalanche;
+            _bic = bic;
         }
+
 
         [HttpGet]
         public IActionResult Index()
@@ -159,6 +166,18 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             );
 
 
+            var sac = _avalanche.ComputeSAC(
+                hashFunction: input => _stats.Hash(input, p.Rounds),
+                inputSizeBytes: p.InputSizeBytes,
+                trials: 1000,
+                mode: AvalancheMode.Sampled
+            );
+            var bic = _bic.ComputeBIC(
+                input => _stats.Hash(input, p.Rounds),
+                inputBitLength: p.InputSizeBytes * 8,
+                rounds: p.Rounds,
+                experimentsPerBit: 200
+            );
 
 
             // 7) Собираем всё в JSON и записываем в result.BitFlipJson
@@ -215,6 +234,22 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                     MultinomialTest = JsonSanitizer.Fix(multinomialU01),
                     ClosePairs = JsonSanitizer.Fix(closePairsU01),
                     CouponCollector = JsonSanitizer.Fix(couponU01)
+                },
+                Avalanche = new
+                {
+                    MeanFlipRate = JsonSanitizer.Fix(sac.MeanFlipRate),
+                    StdDevFlipRate = JsonSanitizer.Fix(sac.StdDevFlipRate),
+                    MinPValue = JsonSanitizer.Fix(sac.MinPValue),
+                    MaxPValue = JsonSanitizer.Fix(sac.MaxPValue),
+                    Notes = sac.Notes
+                },
+                BIC = new
+                {
+                    MeanCorrelation = JsonSanitizer.Fix(bic.MeanCorrelation),
+                    StdCorrelation = JsonSanitizer.Fix(bic.StdCorrelation),
+                    MaxCorrelationAbs = JsonSanitizer.Fix(bic.MaxCorrelationAbs),
+                    MinCorrelationAbs = JsonSanitizer.Fix(bic.MinCorrelation),
+                    Notes = bic.Notes,
                 }
             };
 
