@@ -37,7 +37,9 @@ namespace Complex_for_analyzing_hash_functions.Services
         public byte[] ComputeHash(byte[] input, int rounds = 24)
         {
             if (rounds < 1 || rounds > 24)
+            {
                 throw new ArgumentOutOfRangeException(nameof(rounds));
+            }
 
             var state = new ulong[25];
             byte[] block = new byte[rate];
