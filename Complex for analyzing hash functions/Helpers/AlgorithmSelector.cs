@@ -13,7 +13,7 @@ namespace Complex_for_analyzing_hash_functions.Helpers
                 "Blake" => new Blake256Hash(),
                 "Blake2s" => new Blake2sHash(),
                 //"Blake2b" => new Blake2bHash(),
-                //"Blake3" => new Blake3Hash(),
+                "Blake3" => new Blake3Hash(),
                 _ => throw new Exception($"Unknown hash algorithm: {name}")
             };
         }

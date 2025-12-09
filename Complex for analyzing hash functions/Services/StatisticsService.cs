@@ -32,7 +32,7 @@ namespace Complex_for_analyzing_hash_functions.Services
                 "Blake" => new Blake256Hash(),
                 "Blake2s" => new Blake2sHash(),
                 //"Blake2b" => new Blake2bHash(),
-                //"Blake3" => new Blake3Hash(),
+                "Blake3" => new Blake3Hash(),
                 _ => throw new Exception($"Unknown hash algorithm '{algorithm}'")
             };
         }
@@ -62,7 +62,8 @@ namespace Complex_for_analyzing_hash_functions.Services
             {
                 "Blake" => 14,
                 "Blake2s" => 10,
-                "Keccak" => 24,
+                "Blake3" => 10,
+                "Keccak" => 12,
                 _ => 24
             };
             int fullRounds = maxRounds;           // baseline
