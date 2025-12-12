@@ -62,6 +62,7 @@ namespace Complex_for_analyzing_hash_functions.Services
             {
                 "Blake" => 14,
                 "Blake2s" => 10,
+                "Blake2b" => 10,
                 "Blake3" => 10,
                 "Keccak" => 12,
                 _ => 24
