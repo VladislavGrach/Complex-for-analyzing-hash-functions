@@ -1,48 +1,61 @@
-﻿@* @{
-    ViewData["Title"] = "Home Page";
-}
-
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
- *@
-
-
-
-
-@{
+﻿@{
     ViewData["Title"] = "Главная";
 }
 
-<div class="text-center mt-4">
+<div class="container py-5 main-hero">
+    <div class="row align-items-center">
+        <div class="col-lg-7">
 
-    <h1 class="display-5 mb-4">Комплекс для анализа хэш-функций</h1>
+            <span class="text-uppercase text-primary fw-semibold small mb-2 d-inline-block section-label">
+                Исследовательский программный комплекс
+            </span>
 
-    <p class="lead">
-        Это исследовательский инструмент для статистического анализа хэш-функций
-        <strong>SHA-3 (Keccak)</strong> и <strong>BLAKE2</strong>.
-    </p>
+            <h1 class="display-5 fw-semibold mb-3">
+                Анализ статистических свойств хэш-функций
+            </h1>
 
-    <p>
-        Вы можете запускать тестирование, уменьшать количество раундов,
-        анализировать распределение битов и сохранять результаты в SQL Server.
-    </p>
+            <p class="lead mb-3">
+                Веб‑интерфейс для проведения экспериментальных исследований хэш‑функций
+                <strong>SHA‑3 (Keccak)</strong> и семейства <strong>BLAKE</strong> с возможностью управления параметрами алгоритмов.
+            </p>
 
-    <hr class="my-4" />
+            <p class="mb-4">
+                Запускайте серии тестов и сохраняйте
+                результаты экспериментов в <strong>SQL Server</strong> для последующего анализа.
+            </p>
 
-    <div class="d-flex justify-content-center">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                <a class="btn btn-primary btn-lg"
+                   asp-controller="HashTest" asp-action="Index">
+                    Запустить тестирование
+                </a>
 
-        <a class="btn btn-primary btn-lg mx-2"
-           asp-controller="HashTest" asp-action="Index">
-            Запустить тестирование
-        </a>
+                <a class="btn btn-outline-secondary btn-lg"
+                   asp-controller="HashResults" asp-action="Index">
+                    Просмотр результатов
+                </a>
+            </div>
 
-        <a class="btn btn-outline-secondary btn-lg mx-2"
-           asp-controller="HashResults" asp-action="Index">
-            Просмотр результатов
-        </a>
+            <p class="text-muted small mb-0">
+                Разработано в рамках выпускной квалификационной работы.
+            </p>
+        </div>
 
+        <div class="col-lg-5 mt-4 mt-lg-0">
+            <div class="border rounded-3 p-3 p-lg-4 bg-light">
+                <h2 class="h5 mb-3">Кратко о возможностях</h2>
+                <ul class="list-unstyled mb-0 small">
+                    <li class="mb-2">
+                        • Параметризация числа раундов и размеров входных данных.
+                    </li>
+                    <li class="mb-2">
+                        • Анализ распределения битов.
+                    </li>
+                    <li class="mb-0">
+                        • Сохранение протоколов запусков и статистики в базе данных.
+                    </li>
+                </ul>
+            </div>
+        </div>
     </div>
-
 </div>

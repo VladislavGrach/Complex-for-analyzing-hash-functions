@@ -1,27 +1,59 @@
 ﻿@model Complex_for_analyzing_hash_functions.Models.HashTestParameters
 
-<h2>Hash Testing</h2>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6 col-xl-5">
 
-<form asp-action="Run" method="post">
-    <label>Тестов:</label>
-    <input asp-for="TestsCount" value="100" /><br />
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="h4 mb-3">Параметры тестирования</h2>
+                    <p class="text-muted small mb-4">
+                        Задайте параметры серии экспериментов и запустите вычисление хэш‑значений.
+                    </p>
 
-    <label>Размер входа (байт):</label>
-    <input asp-for="InputSizeBytes" value="32" /><br />
+                    <form asp-action="Run" method="post">
+                        <div asp-validation-summary="All" class="text-danger small mb-3"></div>
 
-    <label>Число раундов:</label>
-    <input asp-for="Rounds" value="8" /><br />
+                        <div class="mb-3">
+                            <label asp-for="TestsCount" class="form-label">Количество тестов</label>
+                            <input asp-for="TestsCount" class="form-control" type="number" min="1" value="100" />
+                            <span asp-validation-for="TestsCount" class="text-danger small"></span>
+                        </div>
 
-    <label>Алгоритм:</label>
-    <select asp-for="Algorithm">
-        <option value="Keccak">Keccak</option>
-        <option value="Blake">BLAKE-256</option>
-        <option value="Blake2s">BLAKE2s-256</option>
-        <option value="Blake2b">BLAKE2b-256</option>
-        <option value="Blake3">BLAKE3-256</option>
-    </select>
-    <br /><br />
+                        <div class="mb-3">
+                            <label asp-for="InputSizeBytes" class="form-label">Размер входных данных (байт)</label>
+                            <input asp-for="InputSizeBytes" class="form-control" type="number" min="1" value="32" />
+                            <span asp-validation-for="InputSizeBytes" class="text-danger small"></span>
+                        </div>
 
+                        <div class="mb-3">
+                            <label asp-for="Rounds" class="form-label">Число раундов</label>
+                            <input asp-for="Rounds" class="form-control" type="number" min="1" value="8" />
+                            <span asp-validation-for="Rounds" class="text-danger small"></span>
+                        </div>
 
-    <button type="submit">Запустить</button>
-</form>
+                        <div class="mb-4">
+                            <label asp-for="Algorithm" class="form-label">Алгоритм</label>
+                            <select asp-for="Algorithm" class="form-select">
+                                <option value="Keccak">Keccak</option>
+                                <option value="Blake">BLAKE-256</option>
+                                <option value="Blake2s">BLAKE2s-256</option>
+                                <option value="Blake2b">BLAKE2b-256</option>
+                                <option value="Blake3">BLAKE3-256</option>
+                            </select>
+                            <span asp-validation-for="Algorithm" class="text-danger small"></span>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button type="submit" class="btn btn-primary">
+                                Запустить тестирование
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

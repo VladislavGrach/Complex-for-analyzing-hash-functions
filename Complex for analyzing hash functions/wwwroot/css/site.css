@@ -17,6 +17,27 @@ html {
   min-height: 100%;
 }
 
+html, body {
+    height: 100%;
+}
+
 body {
-  margin-bottom: 60px;
+    margin-bottom: 60px;
+    color: #000; /* основной текст — чисто чёрный */
+    margin: 0; /* убираем дефолтные отступы браузера */
+    overflow-x: hidden; /* на случай микровылаза по ширине */
+}
+
+/* Чтобы «плашка» справа не выглядела тусклой на фоне чёрного текста */
+.main-hero .bg-light {
+    background-color: #f8f9fa;
+}
+
+/* Акцентная подпись сверху, чтобы не была серой */
+.section-label {
+    color: #000;
+}
+
+.navbar.sticky-top {
+    box-shadow: 0 .125rem .25rem rgba(0,0,0,.06);
 }

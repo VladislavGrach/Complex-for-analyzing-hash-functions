@@ -39,8 +39,14 @@ namespace Complex_for_analyzing_hash_functions.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult Run(HashTestParameters p)
         {
+            if (!ModelState.IsValid)
+            {
+                return View("Index", p);
+            }
+
             // --- 0. Создаём хэшер ---
             IHashFunction hasher = AlgorithmSelector.Create(p.Algorithm);
 
