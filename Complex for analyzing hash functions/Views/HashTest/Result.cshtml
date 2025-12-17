@@ -3,79 +3,175 @@
 
 @{
     ViewData["Title"] = "Результат тестирования";
-    var stats = JsonSerializer.Deserialize<JsonElement>(Model.BitFlipJson);
+
+    JsonElement raw;
+    try
+    {
+        raw = JsonSerializer.Deserialize<JsonElement>(Model.BitFlipJson);
+    }
+    catch
+    {
+        raw = default;
+    }
+
+    var json = (raw.ValueKind != JsonValueKind.Undefined && raw.ValueKind != JsonValueKind.Null)
+        ? Complex_for_analyzing_hash_functions.Helpers.JsonUtils.NormalizeToObject(raw)
+        : default;
 }
 
-<h2 class="mb-4">Результаты тестирования</h2>
-
-<div class="card mb-4">
-    <div class="card-header">
-        Основная статистика
-    </div>
-    <div class="card-body">
-        <p><b>Алгоритм:</b> @Model.Algorithm</p>
-        <p><b>Раунды:</b> @Model.Rounds</p>
-        <p><b>Количество тестов:</b> @Model.TestsCount</p>
-        <p><b>Дата запуска:</b> @Model.RunDate</p>
-    </div>
-</div>
-
-@if (stats.TryGetProperty("NIST", out var nist))
-{
-    <div class="card mb-4">
-        <div class="card-header">
-            Результаты NIST тестов
+<div class="container py-4">
+    <div class="d-flex align-items-baseline justify-content-between flex-wrap gap-2 mb-3">
+        <div>
+            <h2 class="h4 mb-1">Результаты тестирования</h2>
+            <p class="text-muted small mb-0">Детальная статистика по выполненному запуску.</p>
         </div>
+    </div>
+
+    <div class="card shadow-sm">
         <div class="card-body">
-            <ul>
-                @foreach (var test in nist.EnumerateObject())
-                {
-                    <li><b>@test.Name:</b> @test.Value</li>
-                }
-            </ul>
-        </div>
-    </div>
-}
+            <div class="row g-3 g-lg-4">
 
-@if (stats.TryGetProperty("Diehard", out var dh))
-{
-    <div class="card mb-4">
-        <div class="card-header">
-            Результаты Diehard тестов
-        </div>
-        <div class="card-body">
-            <ul>
-                @foreach (var test in dh.EnumerateObject())
+                <!-- BASIC -->
+                <div class="col-12">
+                    <div class="border rounded-3 bg-white p-3 hover-gray">
+                        <h3 class="h6 mb-2">Basic</h3>
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <tbody>
+                                    <tr>
+                                        <th class="text-nowrap" style="width: 220px;">Algorithm</th>
+                                        <td style="white-space: pre-wrap;">@Model.Algorithm</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-nowrap">Rounds</th>
+                                        <td style="white-space: pre-wrap;">@Model.Rounds</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-nowrap">TestsCount</th>
+                                        <td style="white-space: pre-wrap;">@Model.TestsCount</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-nowrap">RunDate</th>
+                                        <td style="white-space: pre-wrap;">@Model.RunDate</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                @if (json.ValueKind == JsonValueKind.Undefined || json.ValueKind == JsonValueKind.Null)
                 {
-                    <li><b>@test.Name:</b> @test.Value</li>
+                    <div class="col-12">
+                        <div class="text-muted">Не удалось прочитать JSON статистики.</div>
+                    </div>
                 }
-            </ul>
-        </div>
-    </div>
-}
-@if (stats.TryGetProperty("TestU01", out var tu01))
-{
-    <div class="card mb-4">
-        <div class="card-header">
-            Результаты TestU01 тестов
-        </div>
-        <div class="card-body">
-            <ul>
-                @foreach (var test in tu01.EnumerateObject())
+                else
                 {
-                    <li><b>@test.Name:</b> @test.Value</li>
+                    <!-- NIST -->
+                    @if (json.TryGetProperty("NIST", out var nist) && nist.ValueKind == JsonValueKind.Object)
+                    {
+                        <div class="col-lg-6">
+                            <div class="border rounded-3 bg-white p-3 h-100 hover-gray">
+                                <h3 class="h6 mb-2">NIST</h3>
+                                <ul class="list-group list-group-flush small">
+                                    @foreach (var test in nist.EnumerateObject())
+                                    {
+                                        <li class="list-group-item d-flex justify-content-between gap-3 hover-gray">
+                                            <span class="text-nowrap"><strong>@test.Name</strong></span>
+                                            <span class="text-end" style="white-space: pre-wrap;">@test.Value</span>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- DIEHARD -->
+                    @if (json.TryGetProperty("Diehard", out var dh) && dh.ValueKind == JsonValueKind.Object)
+                    {
+                        <div class="col-lg-6">
+                            <div class="border rounded-3 bg-white p-3 h-100 hover-gray">
+                                <h3 class="h6 mb-2">Diehard</h3>
+                                <ul class="list-group list-group-flush small">
+                                    @foreach (var test in dh.EnumerateObject())
+                                    {
+                                        <li class="list-group-item d-flex justify-content-between gap-3 hover-gray">
+                                            <span class="text-nowrap"><strong>@test.Name</strong></span>
+                                            <span class="text-end" style="white-space: pre-wrap;">@test.Value</span>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- TESTU01 -->
+                    @if (json.TryGetProperty("TestU01", out var u01) && u01.ValueKind == JsonValueKind.Object)
+                    {
+                        <div class="col-lg-6">
+                            <div class="border rounded-3 bg-white p-3 h-100 hover-gray">
+                                <h3 class="h6 mb-2">TestU01</h3>
+                                <ul class="list-group list-group-flush small">
+                                    @foreach (var test in u01.EnumerateObject())
+                                    {
+                                        <li class="list-group-item d-flex justify-content-between gap-3 hover-gray">
+                                            <span class="text-nowrap"><strong>@test.Name</strong></span>
+                                            <span class="text-end" style="white-space: pre-wrap;">@test.Value</span>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- AVALANCHE -->
+                    @if (json.TryGetProperty("Avalanche", out var avalanche) && avalanche.ValueKind == JsonValueKind.Object)
+                    {
+                        <div class="col-lg-6">
+                            <div class="border rounded-3 bg-white p-3 h-100 hover-gray">
+                                <h3 class="h6 mb-2">Avalanche</h3>
+                                <ul class="list-group list-group-flush small">
+                                    @foreach (var test in avalanche.EnumerateObject())
+                                    {
+                                        <li class="list-group-item d-flex justify-content-between gap-3 hover-gray">
+                                            <span class="text-nowrap"><strong>@test.Name</strong></span>
+                                            <span class="text-end" style="white-space: pre-wrap;">@test.Value</span>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- BIC -->
+                    @if (json.TryGetProperty("BIC", out var bic) && bic.ValueKind == JsonValueKind.Object)
+                    {
+                        <div class="col-lg-6">
+                            <div class="border rounded-3 bg-white p-3 h-100 hover-gray">
+                                <h3 class="h6 mb-2">BIC</h3>
+                                <ul class="list-group list-group-flush small">
+                                    @foreach (var test in bic.EnumerateObject())
+                                    {
+                                        <li class="list-group-item d-flex justify-content-between gap-3 hover-gray">
+                                            <span class="text-nowrap"><strong>@test.Name</strong></span>
+                                            <span class="text-end" style="white-space: pre-wrap;">@test.Value</span>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Полный JSON -->
+                    <div class="col-12">
+                        <details class="border rounded-3 bg-white p-3 hover-gray">
+                            <summary class="fw-semibold">Полный JSON</summary>
+                            <pre class="mt-3 mb-0 small" style="white-space: pre-wrap;">@Model.BitFlipJson</pre>
+                        </details>
+                    </div>
                 }
-            </ul>
+            </div>
         </div>
-    </div>
-}
-<div class="card">
-    <div class="card-header">
-        Полный JSON (вспомогательная информация)
-    </div>
-    <div class="card-body">
-        <pre style="background:#f8f8f8; padding:15px; border-radius:6px; white-space:pre-wrap;">
-            @Model.BitFlipJson
-        </pre>
     </div>
 </div>

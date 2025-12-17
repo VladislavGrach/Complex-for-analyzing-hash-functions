@@ -41,3 +41,17 @@ body {
 .navbar.sticky-top {
     box-shadow: 0 .125rem .25rem rgba(0,0,0,.06);
 }
+
+/* ћ€гкий серый hover как у Bootstrap table-hover */
+.hover-gray {
+    transition: background-color .12s ease-in-out;
+}
+
+    .hover-gray:hover {
+        background-color: #f8f9fa;
+    }
+
+/* Hover на элементах list-group (как "строки") */
+.list-group-item.hover-gray:hover {
+    background-color: #f8f9fa;
+}
