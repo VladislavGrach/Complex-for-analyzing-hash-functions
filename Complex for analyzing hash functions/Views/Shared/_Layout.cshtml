@@ -7,7 +7,6 @@
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/Complex_for_analyzing_hash_functions.styles.css" asp-append-version="true" />
 </head>
 
 <body class="d-flex flex-column min-vh-100">
@@ -34,6 +33,14 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" asp-controller="HashResults" asp-action="Index">Результаты</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link"
+                               asp-controller="HashAnalysis"
+                               asp-action="Index"
+                               asp-route-algorithm="Keccak">
+                                Аналитика
+                            </a>
                         </li>
                     </ul>
                 </div>

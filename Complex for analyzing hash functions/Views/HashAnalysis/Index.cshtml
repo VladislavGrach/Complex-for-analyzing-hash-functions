@@ -1,0 +1,143 @@
+﻿@* @model List<Complex_for_analyzing_hash_functions.Models.RoundStatisticPoint>
+
+@{
+    ViewData["Title"] = "Анализ по раундам";
+}
+
+<h2>Анализ свойств хэш-функции по числу раундов</h2>
+
+<hr />
+
+<div>
+    <canvas id="sacChart" height="120"></canvas>
+</div>
+
+<div class="mt-4">
+    <canvas id="bicChart" height="120"></canvas>
+</div>
+
+<div class="mt-4">
+    <canvas id="hammingChart" height="120"></canvas>
+</div>
+
+@section Scripts
+{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="~/js/hash-analysis.js"></script>
+    <script>
+        const rounds = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.Rounds)));
+
+        const meanFlipRates = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.MeanFlipRate)));
+        const stdFlipRates = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.StdDevFlipRate)));
+
+        const bicMax = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.BicMaxCorrelation)));
+        const bicStd = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.BicStdCorrelation)));
+
+        const avgHamming = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.AvgHamming)));
+    </script>
+} *@
+
+@model List<Complex_for_analyzing_hash_functions.Models.RoundStatisticPoint>
+
+@{
+    ViewData["Title"] = "Анализ по раундам";
+}
+
+<div class="mb-4">
+    <h2 class="fw-semibold">Анализ свойств хэш-функции по числу раундов</h2>
+    <p class="text-muted mb-3">
+        Визуализация изменения статистических характеристик при варьировании числа раундов.
+    </p>
+
+    <form method="get" class="row g-2 align-items-center">
+        <div class="col-auto">
+            <label class="col-form-label">Алгоритм:</label>
+        </div>
+        <div class="col-auto">
+            <select name="algorithm" class="form-select" onchange="this.form.submit()">
+                <option value="Keccak">Keccak</option>
+                <option value="Blake">BLAKE-256</option>
+                <option value="Blake2s">BLAKE2s</option>
+                <option value="Blake2b">BLAKE2b</option>
+                <option value="Blake3">BLAKE3</option>
+            </select>
+        </div>
+    </form>
+</div>
+
+<div class="row g-4">
+
+    <!-- Avalanche -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Avalanche Effect</h5>
+                <canvas id="sacChart" height="140"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- BIC -->
+    <div class="col-lg-6">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Bit Independence Criterion</h5>
+                <canvas id="bicChart" height="140"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hamming -->
+    <div class="col-lg-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Среднее расстояние Хэмминга</h5>
+                <canvas id="hammingChart" height="140"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts
+{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const rounds = @Html.Raw(
+        System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.Rounds))
+    );
+
+        const meanFlipRates = @Html.Raw(
+        System.Text.Json.JsonSerializer.Serialize(
+            Model.Select(m => double.IsFinite(m.MeanFlipRate) ? m.MeanFlipRate : (double?)null)
+        )
+    );
+
+        const stdFlipRates = @Html.Raw(
+        System.Text.Json.JsonSerializer.Serialize(
+            Model.Select(m => double.IsFinite(m.StdDevFlipRate) ? m.StdDevFlipRate : (double?)null)
+        )
+    );
+
+        const bicMax = @Html.Raw(
+        System.Text.Json.JsonSerializer.Serialize(
+          Model.Select(m => double.IsFinite(m.BicMaxCorrelation) ? m.BicMaxCorrelation : (double?)null)
+        )
+    );
+
+        const bicStd = @Html.Raw(
+        System.Text.Json.JsonSerializer.Serialize(
+          Model.Select(m => double.IsFinite(m.BicStdCorrelation) ? m.BicStdCorrelation : (double?)null)
+        )
+    );
+
+        const avgHamming = @Html.Raw(
+        System.Text.Json.JsonSerializer.Serialize(
+            Model.Select(m => double.IsFinite(m.AvgHamming) ? m.AvgHamming : (double?)null)
+        )
+    );
+    </script>
+
+    <script src="~/js/hash-analysis.js"></script>
+}
