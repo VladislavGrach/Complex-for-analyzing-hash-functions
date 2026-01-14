@@ -1,4 +1,4 @@
-﻿@model List<Complex_for_analyzing_hash_functions.Models.RoundStatisticPoint>
+﻿@model List<Complex_for_analyzing_hash_functions.Models.RoundStatisticAggregatedPoint>
 
 @{
     ViewData["Title"] = "Анализ по раундам";
@@ -60,44 +60,29 @@
 
 </div>
 
-@section Scripts
-{
+@section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        const rounds = @Html.Raw(
-        System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.Rounds))
-    );
+        const rounds = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.Rounds)));
 
-        const meanFlipRates = @Html.Raw(
-        System.Text.Json.JsonSerializer.Serialize(
-            Model.Select(m => double.IsFinite(m.MeanFlipRate) ? m.MeanFlipRate : (double?)null)
-        )
-    );
+        // ===== SAC =====
+        const sacMean  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.MeanFlipRateMean)));
+        const sacCi    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.MeanFlipRateCi)));
+        const sacUpper = sacMean.map((m, i) => m + sacCi[i]);
+        const sacLower = sacMean.map((m, i) => m - sacCi[i]);
 
-        const stdFlipRates = @Html.Raw(
-        System.Text.Json.JsonSerializer.Serialize(
-            Model.Select(m => double.IsFinite(m.StdDevFlipRate) ? m.StdDevFlipRate : (double?)null)
-        )
-    );
+        // ===== BIC =====
+        const bicMean  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.BicMaxCorrelationMean)));
+        const bicCi    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.BicMaxCorrelationCi)));
+        const bicUpper = bicMean.map((m, i) => m + bicCi[i]);
+        const bicLower = bicMean.map((m, i) => m - bicCi[i]);
 
-        const bicMax = @Html.Raw(
-        System.Text.Json.JsonSerializer.Serialize(
-          Model.Select(m => double.IsFinite(m.BicMaxCorrelation) ? m.BicMaxCorrelation : (double?)null)
-        )
-    );
-
-        const bicStd = @Html.Raw(
-        System.Text.Json.JsonSerializer.Serialize(
-          Model.Select(m => double.IsFinite(m.BicStdCorrelation) ? m.BicStdCorrelation : (double?)null)
-        )
-    );
-
-        const avgHamming = @Html.Raw(
-        System.Text.Json.JsonSerializer.Serialize(
-            Model.Select(m => double.IsFinite(m.AvgHamming) ? m.AvgHamming : (double?)null)
-        )
-    );
+        // ===== Hamming =====
+        const hamMean  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.AvgHammingMean)));
+        const hamCi    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.AvgHammingCi)));
+        const hamUpper = hamMean.map((m, i) => m + hamCi[i]);
+        const hamLower = hamMean.map((m, i) => m - hamCi[i]);
     </script>
 
     <script src="~/js/hash-analysis.js"></script>

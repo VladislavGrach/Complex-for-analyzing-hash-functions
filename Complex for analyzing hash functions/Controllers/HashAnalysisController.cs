@@ -15,49 +15,134 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             _db = db;
         }
 
+        //public IActionResult Index(string algorithm = "Keccak")
+        //{
+        //    var results = _db.HashTestResults
+        //        .Where(r => r.Algorithm == algorithm)
+        //        .OrderBy(r => r.Rounds)
+        //        .ToList();
+
+        //    var points = results.Select(r =>
+        //    {
+        //        using var doc = JsonDocument.Parse(r.BitFlipJson);
+        //        var root = JsonUtils.NormalizeToObject(doc.RootElement);
+
+        //        JsonElement avalanche = default;
+        //        JsonElement bic = default;
+
+        //        bool hasAvalanche = root.TryGetProperty("Avalanche", out avalanche);
+        //        bool hasBic = root.TryGetProperty("BIC", out bic);
+
+        //        return new RoundStatisticPoint
+        //        {
+        //            Rounds = r.Rounds,
+        //            AvgHamming = r.AvgHamming,
+
+        //            MeanFlipRate = hasAvalanche && avalanche.TryGetProperty("MeanFlipRate", out var mfr)
+        //                ? mfr.GetDouble()
+        //                : double.NaN,
+
+        //            StdDevFlipRate = hasAvalanche && avalanche.TryGetProperty("StdDevFlipRate", out var sffr)
+        //                ? sffr.GetDouble()
+        //                : double.NaN,
+
+        //            BicMaxCorrelation = hasBic && bic.TryGetProperty("MaxCorrelationAbs", out var maxc)
+        //                ? maxc.GetDouble()
+        //                : double.NaN,
+
+        //            BicStdCorrelation = hasBic && bic.TryGetProperty("StdCorrelation", out var stdc)
+        //                ? stdc.GetDouble()
+        //                : double.NaN
+        //        };
+        //    }).ToList();
+
+        //    ViewBag.SelectedAlgorithm = algorithm;
+        //    return View(points);
+        //}
+
         public IActionResult Index(string algorithm = "Keccak")
         {
-            var results = _db.HashTestResults
+            return RedirectToAction(nameof(Aggregated), new { algorithm });
+        }
+
+        public IActionResult Aggregated(string algorithm = "Keccak")
+        {
+            var raw = _db.HashTestResults
                 .Where(r => r.Algorithm == algorithm)
-                .OrderBy(r => r.Rounds)
                 .ToList();
 
-            var points = results.Select(r =>
+            var parsed = raw.Select(r =>
             {
                 using var doc = JsonDocument.Parse(r.BitFlipJson);
                 var root = JsonUtils.NormalizeToObject(doc.RootElement);
 
-                JsonElement avalanche = default;
-                JsonElement bic = default;
+                double meanFlip = root.TryGetProperty("Avalanche", out var a) &&
+                                  a.TryGetProperty("MeanFlipRate", out var m)
+                    ? m.GetDouble()
+                    : double.NaN;
 
-                bool hasAvalanche = root.TryGetProperty("Avalanche", out avalanche);
-                bool hasBic = root.TryGetProperty("BIC", out bic);
+                double bicMax = root.TryGetProperty("BIC", out var b) &&
+                                b.TryGetProperty("MaxCorrelationAbs", out var c)
+                    ? c.GetDouble()
+                    : double.NaN;
 
-                return new RoundStatisticPoint
+                return new
                 {
-                    Rounds = r.Rounds,
-                    AvgHamming = r.AvgHamming,
-
-                    MeanFlipRate = hasAvalanche && avalanche.TryGetProperty("MeanFlipRate", out var mfr)
-                        ? mfr.GetDouble()
-                        : double.NaN,
-
-                    StdDevFlipRate = hasAvalanche && avalanche.TryGetProperty("StdDevFlipRate", out var sffr)
-                        ? sffr.GetDouble()
-                        : double.NaN,
-
-                    BicMaxCorrelation = hasBic && bic.TryGetProperty("MaxCorrelationAbs", out var maxc)
-                        ? maxc.GetDouble()
-                        : double.NaN,
-
-                    BicStdCorrelation = hasBic && bic.TryGetProperty("StdCorrelation", out var stdc)
-                        ? stdc.GetDouble()
-                        : double.NaN
+                    r.Rounds,
+                    r.AvgHamming,
+                    MeanFlipRate = meanFlip,
+                    BicMaxCorrelation = bicMax
                 };
-            }).ToList();
+            })
+            .Where(x =>
+                !double.IsNaN(x.AvgHamming) &&
+                !double.IsNaN(x.MeanFlipRate) &&
+                !double.IsNaN(x.BicMaxCorrelation))
+            .ToList();
 
-            ViewBag.SelectedAlgorithm = algorithm;
-            return View(points);
+            var aggregated = parsed
+                .GroupBy(x => x.Rounds)
+                .OrderBy(g => g.Key)
+                .Select(g =>
+                {
+                    int n = g.Count();
+
+                    double hStd = Std(g.Select(x => x.AvgHamming));
+                    double fStd = Std(g.Select(x => x.MeanFlipRate));
+                    double bStd = Std(g.Select(x => x.BicMaxCorrelation));
+
+                    return new RoundStatisticAggregatedPoint
+                    {
+                        Rounds = g.Key,
+
+                        AvgHammingMean = g.Average(x => x.AvgHamming),
+                        AvgHammingStd = hStd,
+                        AvgHammingCi = n > 1 ? 1.96 * hStd / Math.Sqrt(n) : 0,
+
+                        MeanFlipRateMean = g.Average(x => x.MeanFlipRate),
+                        MeanFlipRateStd = fStd,
+                        MeanFlipRateCi = n > 1 ? 1.96 * fStd / Math.Sqrt(n) : 0,
+
+                        BicMaxCorrelationMean = g.Average(x => x.BicMaxCorrelation),
+                        BicMaxCorrelationStd = bStd,
+                        BicMaxCorrelationCi = n > 1 ? 1.96 * bStd / Math.Sqrt(n) : 0
+                    };
+                })
+                .ToList();
+
+            ViewBag.Algorithm = algorithm;
+            return View(aggregated);
         }
+
+
+        private static double Std(IEnumerable<double> values)
+        {
+            var arr = values.Where(v => !double.IsNaN(v)).ToArray();
+            if (arr.Length < 2) return 0;
+
+            double mean = arr.Average();
+            return Math.Sqrt(arr.Sum(v => (v - mean) * (v - mean)) / (arr.Length - 1));
+        }
+
     }
 }
