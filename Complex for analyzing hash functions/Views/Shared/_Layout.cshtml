@@ -25,15 +25,25 @@
 
                 <div class="collapse navbar-collapse" id="navbarMain">
                     <ul class="navbar-nav me-auto mb-2 mb-sm-0">
+
                         <li class="nav-item">
-                            <a class="nav-link" asp-controller="Home" asp-action="Index">Главная</a>
+                            <a class="nav-link" asp-controller="Home" asp-action="Index">
+                                Главная
+                            </a>
                         </li>
+
                         <li class="nav-item">
-                            <a class="nav-link" asp-controller="HashTest" asp-action="Index">Запуск тестирования</a>
+                            <a class="nav-link" asp-controller="HashTest" asp-action="Index">
+                                Запуск тестирования
+                            </a>
                         </li>
+
                         <li class="nav-item">
-                            <a class="nav-link" asp-controller="HashResults" asp-action="Index">Результаты</a>
+                            <a class="nav-link" asp-controller="HashResults" asp-action="Index">
+                                Результаты
+                            </a>
                         </li>
+
                         <li class="nav-item">
                             <a class="nav-link"
                                asp-controller="HashAnalysis"
@@ -42,6 +52,15 @@
                                 Аналитика
                             </a>
                         </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link"
+                               asp-controller="HashAnalysis"
+                               asp-action="Compare">
+                                Сравнение алгоритмов
+                            </a>
+                        </li>
+
                     </ul>
                 </div>
             </div>
@@ -54,12 +73,11 @@
         </div>
     </main>
 
-
     <footer class="border-top bg-white mt-auto">
         <div class="container py-1">
             <div class="d-flex justify-content-between align-items-center">
                 <div class="text-muted small mb-0">
-                    © @DateTime.Now.Year — Комплекс для анализа хэш‑функций
+                    © @DateTime.Now.Year — Комплекс для анализа хэш-функций
                 </div>
                 <div class="text-muted small mb-0">
                     ВКР
@@ -74,5 +92,4 @@
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>
-
 </html>

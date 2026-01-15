@@ -144,5 +144,68 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             return Math.Sqrt(arr.Sum(v => (v - mean) * (v - mean)) / (arr.Length - 1));
         }
 
+        public IActionResult Compare(int rounds = 8)
+        {
+            var algorithms = new[] { "Keccak", "Blake", "Blake2s", "Blake2b", "Blake3" };
+
+            var results = _db.HashTestResults
+                .Where(r => r.Rounds == rounds && algorithms.Contains(r.Algorithm))
+                .ToList();
+
+            var parsed = results.Select(r =>
+            {
+                using var doc = JsonDocument.Parse(r.BitFlipJson);
+                var root = JsonUtils.NormalizeToObject(doc.RootElement);
+
+                double sac = root.TryGetProperty("Avalanche", out var a) &&
+                             a.TryGetProperty("MeanFlipRate", out var mfr)
+                    ? mfr.GetDouble()
+                    : double.NaN;
+
+                double bic = root.TryGetProperty("BIC", out var b) &&
+                             b.TryGetProperty("MaxCorrelationAbs", out var mc)
+                    ? mc.GetDouble()
+                    : double.NaN;
+
+                return new
+                {
+                    r.Algorithm,
+                    r.AvgHamming,
+                    Sac = sac,
+                    Bic = bic
+                };
+            })
+            .Where(x =>
+                !double.IsNaN(x.Sac) &&
+                !double.IsNaN(x.Bic) &&
+                !double.IsNaN(x.AvgHamming))
+            .ToList();
+
+            var comparison = parsed
+                .GroupBy(x => x.Algorithm)
+                .Select(g =>
+                {
+                    var n = g.Count();
+                    return new AlgorithmComparisonPoint
+                    {
+                        Algorithm = g.Key,
+
+                        SacMean = g.Average(x => x.Sac),
+                        SacStd = n > 1 ? Std(g.Select(x => x.Sac)) : 0,
+
+                        BicMean = g.Average(x => x.Bic),
+                        BicStd = n > 1 ? Std(g.Select(x => x.Bic)) : 0,
+
+                        HammingMean = g.Average(x => x.AvgHamming),
+                        HammingStd = n > 1 ? Std(g.Select(x => x.AvgHamming)) : 0
+                    };
+                })
+                .OrderBy(x => x.Algorithm)
+                .ToList();
+
+            ViewBag.Rounds = rounds;
+            return View(comparison);
+        }
+
     }
 }

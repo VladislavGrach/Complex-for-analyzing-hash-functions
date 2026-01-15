@@ -1,0 +1,67 @@
+﻿@model List<Complex_for_analyzing_hash_functions.Models.AlgorithmComparisonPoint>
+
+@{
+    ViewData["Title"] = "Сравнение алгоритмов";
+}
+
+<h2 class="fw-semibold mb-3">Сравнение хэш-функций</h2>
+
+<p class="text-muted">
+    Фиксируется число раундов, после чего производится сравнительный анализ
+    различных алгоритмов по выбранной статистической метрике.
+</p>
+
+<form method="get" class="row g-3 align-items-end mb-4">
+    <div class="col-auto">
+        <label class="form-label">Число раундов</label>
+        <input type="number" name="rounds" value="@ViewBag.Rounds"
+               class="form-control" min="1" />
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary">Построить</button>
+    </div>
+</form>
+
+<div class="mb-3">
+    <label class="form-label fw-semibold">Метрика:</label><br />
+    <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="metric"
+               value="sac" checked>
+        <label class="form-check-label">Avalanche (SAC)</label>
+    </div>
+    <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="metric"
+               value="bic">
+        <label class="form-check-label">BIC</label>
+    </div>
+    <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="metric"
+               value="ham">
+        <label class="form-check-label">Hamming</label>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <canvas id="compareChart" height="120"></canvas>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const algorithms = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.Algorithm)));
+
+        const sacMean = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.SacMean)));
+        const sacStd  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.SacStd)));
+
+        const bicMean = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.BicMean)));
+        const bicStd  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.BicStd)));
+
+        const hamMean = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.HammingMean)));
+        const hamStd  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.HammingStd)));
+    </script>
+
+    <script src="~/js/hash-compare.js"></script>
+}
