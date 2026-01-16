@@ -15,13 +15,6 @@
             <label class="col-form-label">Алгоритм:</label>
         </div>
         <div class="col-auto">
-            @* <select name="algorithm" class="form-select" onchange="this.form.submit()">
-                <option value="Keccak">Keccak</option>
-                <option value="Blake">BLAKE-256</option>
-                <option value="Blake2s">BLAKE2s</option>
-                <option value="Blake2b">BLAKE2b</option>
-                <option value="Blake3">BLAKE3</option>
-            </select> *@
             <select name="algorithm" class="form-select" onchange="this.form.submit()">
                 <option value="Keccak" selected="@(ViewBag.Algorithm == "Keccak")">Keccak</option>
                 <option value="Blake" selected="@(ViewBag.Algorithm == "Blake")">BLAKE-256</option>
