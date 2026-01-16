@@ -91,7 +91,7 @@ namespace Complex_for_analyzing_hash_functions.Controllers
 
             double lempelZiv = _nist.LempelZivCompressionTestOnHashStream(
                 input => hasher.ComputeHash(input, p.Rounds),
-                200_000);
+                1_500_000);
 
             double linearComplexity = _nist.LinearComplexityTest(bits, 32);
             double serial = _nist.SerialTest(bits, 2);
@@ -131,7 +131,7 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             // === TEST U01 ===
             double collisionU01 = _testu01.CollisionTestOnHashStream(
                 input => hasher.ComputeHash(input, p.Rounds),
-                requiredBits: 15_000_000,
+                requiredBits: 1_500_000,
                 t: 20,
                 n: 500_000);
 

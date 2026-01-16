@@ -403,7 +403,12 @@ namespace The_complex_of_testing_hash_functions.Services
             {
                 int pattern = Convert.ToInt32(bits.Substring(idx, L), 2);
 
-                sum += (i + 1) - table[pattern];
+                int distance = (i + 1) - table[pattern];
+
+                if (distance <= 0)
+                    return 0.0;
+
+                sum += Math.Log(distance, 2);
 
                 table[pattern] = i + 1;
                 idx += L;
@@ -455,56 +460,54 @@ namespace The_complex_of_testing_hash_functions.Services
         public double LempelZivCompressionTest(string bits)
         {
             int n = bits.Length;
+
             if (n < LZ_MIN_BITS_REQUIRED)
                 return 0.0;
 
-            int i = 0, k = 1, l = 1;
-            int c = 1;
+            // --- 1. Считаем число фраз по точному LZ76 ---
+            int c = CountLZ76Phrases(bits);
 
-            while (true)
-            {
-                if (k + i >= n)
-                {
-                    c++;
-                    break;
-                }
+            // --- 2. Статистика по NIST SP 800-22 ---
+            double log2n = Math.Log(n, 2);
+            double mean = n / log2n;
+            double variance = 0.266 * n / Math.Pow(log2n, 3);
 
-                if (bits[i + k] == bits[k - 1])
-                {
-                    i++;
-                    if (k + i == n)
-                    {
-                        c++;
-                        break;
-                    }
-                }
-                else
-                {
-                    if (i > l) l = i;
-                    k++;
-                    if (k > n)
-                        break;
-                    i = 0;
-                    c++;
-                }
-            }
+            double z = (c - mean) / Math.Sqrt(variance);
+            double pValue = Erfc(Math.Abs(z) / Math.Sqrt(2));
 
-            double log2n = Math.Log(n) / Math.Log(2);
-
-            double mu = n / log2n;
-
-            double sigma2 =
-                n * (Math.Log(Math.E, 2) - (2 - Math.Log(2 * Math.E, 2)))
-                / (log2n * log2n);
-
-            double sigma = Math.Sqrt(sigma2);
-
-            double z = (c - mu) / sigma;
-
-            double pValue = 2.0 * (1.0 - NormalCDF(Math.Abs(z)));
-            return Math.Max(0.0, Math.Min(1.0, pValue));
+            return Math.Clamp(pValue, 0.0, 1.0);
         }
 
+        private int CountLZ76Phrases(string bits)
+        {
+            int n = bits.Length;
+            int c = 0;
+            int i = 0;
+
+            while (i < n)
+            {
+                int maxLen = 0;
+
+                // ищем самую длинную подстроку, которая уже встречалась
+                for (int j = 0; j < i; j++)
+                {
+                    int k = 0;
+                    while (i + k < n && bits[j + k] == bits[i + k])
+                    {
+                        k++;
+                    }
+
+                    if (k > maxLen)
+                        maxLen = k;
+                }
+
+                // новая фраза
+                c++;
+                i += maxLen + 1;
+            }
+
+            return c;
+        }
         #endregion
 
         #region Linear Complexity Test
@@ -1026,35 +1029,6 @@ namespace The_complex_of_testing_hash_functions.Services
             return -tmp + Math.Log(2.5066282746310005 * ser / x);
         }
 
-        //public string GenerateHashStream(Func<byte[], byte[]> hashFunction, int requiredBits)
-        //{
-        //    var sb = new StringBuilder(requiredBits);
-        //    byte[] counter = new byte[8];
-
-        //    while (sb.Length < requiredBits)
-        //    {
-        //        byte[] hash = hashFunction(counter);
-
-        //        foreach (byte b in hash)
-        //        {
-        //            for (int bit = 7; bit >= 0; bit--)
-        //            {
-        //                sb.Append(((b >> bit) & 1) == 1 ? '1' : '0');
-        //                if (sb.Length == requiredBits)
-        //                    return sb.ToString();
-        //            }
-        //        }
-
-        //        // ++counter
-        //        for (int i = 0; i < 8; i++)
-        //        {
-        //            counter[i]++;
-        //            if (counter[i] != 0) break;
-        //        }
-        //    }
-
-        //    return sb.ToString();
-        //}
         public string GenerateHashStream(Func<byte[], byte[]> hashFunction, int requiredBits)
         {
             if (hashFunction == null)
@@ -1100,7 +1074,6 @@ namespace The_complex_of_testing_hash_functions.Services
 
             return sb.ToString();
         }
-
         #endregion
     }
 }
