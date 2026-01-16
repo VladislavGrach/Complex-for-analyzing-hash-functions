@@ -143,16 +143,16 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             double mean = arr.Average();
             return Math.Sqrt(arr.Sum(v => (v - mean) * (v - mean)) / (arr.Length - 1));
         }
-
-        public IActionResult Compare(int rounds = 8)
+        
+        public IActionResult Compare(int rounds = 8, string metric = "sac")
         {
             var algorithms = new[] { "Keccak", "Blake", "Blake2s", "Blake2b", "Blake3" };
 
-            var results = _db.HashTestResults
+            var raw = _db.HashTestResults
                 .Where(r => r.Rounds == rounds && algorithms.Contains(r.Algorithm))
                 .ToList();
 
-            var parsed = results.Select(r =>
+            var parsed = raw.Select(r =>
             {
                 using var doc = JsonDocument.Parse(r.BitFlipJson);
                 var root = JsonUtils.NormalizeToObject(doc.RootElement);
@@ -170,40 +170,43 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                 return new
                 {
                     r.Algorithm,
-                    r.AvgHamming,
                     Sac = sac,
-                    Bic = bic
+                    Bic = bic,
+                    Hamming = r.AvgHamming
                 };
             })
             .Where(x =>
                 !double.IsNaN(x.Sac) &&
                 !double.IsNaN(x.Bic) &&
-                !double.IsNaN(x.AvgHamming))
+                !double.IsNaN(x.Hamming))
             .ToList();
 
             var comparison = parsed
                 .GroupBy(x => x.Algorithm)
                 .Select(g =>
                 {
-                    var n = g.Count();
+                    var values = metric switch
+                    {
+                        "sac" => g.Select(x => x.Sac),
+                        "bic" => g.Select(x => x.Bic),
+                        _ => g.Select(x => x.Hamming)
+                    };
+
+                    var arr = values.ToArray();
+
                     return new AlgorithmComparisonPoint
                     {
                         Algorithm = g.Key,
-
-                        SacMean = g.Average(x => x.Sac),
-                        SacStd = n > 1 ? Std(g.Select(x => x.Sac)) : 0,
-
-                        BicMean = g.Average(x => x.Bic),
-                        BicStd = n > 1 ? Std(g.Select(x => x.Bic)) : 0,
-
-                        HammingMean = g.Average(x => x.AvgHamming),
-                        HammingStd = n > 1 ? Std(g.Select(x => x.AvgHamming)) : 0
+                        Mean = arr.Average(),
+                        Std = arr.Length > 1 ? Std(arr) : 0
                     };
                 })
                 .OrderBy(x => x.Algorithm)
                 .ToList();
 
             ViewBag.Rounds = rounds;
+            ViewBag.Metric = metric;
+
             return View(comparison);
         }
 

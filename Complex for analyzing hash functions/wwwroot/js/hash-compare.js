@@ -3,75 +3,59 @@
     const ctx = document.getElementById("compareChart");
     if (!ctx) return;
 
-    let chart = null;
-
-    function build(metric) {
-
-        let mean, yLabel, title;
-
-        if (metric === "sac") {
-            mean = sacMean;
-            yLabel = "Доля изменённых выходных битов";
-            title = "Сравнение алгоритмов по Avalanche Effect";
+    const meta = {
+        sac: {
+            title: "Сравнение алгоритмов по Avalanche Effect",
+            yLabel: "Доля изменённых выходных битов"
+        },
+        bic: {
+            title: "Сравнение алгоритмов по Bit Independence Criterion",
+            yLabel: "Максимальная корреляция"
+        },
+        ham: {
+            title: "Сравнение алгоритмов по расстоянию Хэмминга",
+            yLabel: "Среднее расстояние Хэмминга (бит)"
         }
-        else if (metric === "bic") {
-            mean = bicMean;
-            yLabel = "Максимальная корреляция";
-            title = "Сравнение алгоритмов по Bit Independence Criterion";
-        }
-        else {
-            mean = hamMean;
-            yLabel = "Среднее расстояние Хэмминга (бит)";
-            title = "Сравнение алгоритмов по расстоянию Хэмминга";
-        }
+    };
 
-        if (chart) {
-            chart.destroy();
-        }
-
-        chart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: algorithms,
-                datasets: [
-                    {
-                        label: 'Среднее значение',
-                        data: mean,
-                        backgroundColor: '#1f77b4',
-                        borderColor: '#1f77b4',
-                        borderWidth: 1
+    new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: algorithms,
+            datasets: [
+                {
+                    label: "Среднее значение",
+                    data: mean,
+                    backgroundColor: "#1f77b4",
+                    borderColor: "#1f77b4",
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: "bottom" },
+                title: {
+                    display: true,
+                    text: meta[metric].title
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx =>
+                            `Среднее значение: ${ctx.parsed.y.toFixed(4)}`
                     }
-                ]
+                }
             },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    },
+            scales: {
+                y: {
+                    beginAtZero: true,
                     title: {
                         display: true,
-                        text: title
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: yLabel
-                        }
+                        text: meta[metric].yLabel
                     }
                 }
             }
-        });
-    }
-
-    build("sac");
-
-    // Переключатель метрик
-    document.querySelectorAll("input[name=metric]")
-        .forEach(radio =>
-            radio.addEventListener("change", e => build(e.target.value))
-        );
+        }
+    });
 });
