@@ -49,15 +49,16 @@
         </div>
     </div>
 
-    <!-- Hamming -->
+    <!-- Monobit -->
     <div class="col-lg-12">
         <div class="card shadow-sm">
             <div class="card-body">
-                <h5 class="card-title">Среднее расстояние Хэмминга</h5>
-                <canvas id="hammingChart" height="140"></canvas>
+                <h5 class="card-title">Монобитный тест (NIST)</h5>
+                <canvas id="monobitChart" height="140"></canvas>
             </div>
         </div>
     </div>
+
 
 </div>
 
@@ -79,11 +80,13 @@
         const bicUpper = bicMean.map((m, i) => m + bicCi[i]);
         const bicLower = bicMean.map((m, i) => m - bicCi[i]);
 
-        // ===== Hamming =====
-        const hamMean  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.AvgHammingMean)));
-        const hamCi    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.AvgHammingCi)));
-        const hamUpper = hamMean.map((m, i) => m + hamCi[i]);
-        const hamLower = hamMean.map((m, i) => m - hamCi[i]);
+                // ===== Monobit =====
+        const monoMean = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.MonobitMean)));
+        const monoCi = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.MonobitCi)));
+        const monoUpper = monoMean.map((m, i) => m + monoCi[i]);
+        const monoLower = monoMean.map((m, i) => m - monoCi[i]);
+
+
     </script>
 
     <script src="~/js/hash-analysis.js"></script>

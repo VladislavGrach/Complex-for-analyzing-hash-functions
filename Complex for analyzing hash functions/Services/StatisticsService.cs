@@ -121,10 +121,6 @@ namespace Complex_for_analyzing_hash_functions.Services
                 Algorithm = p.Algorithm,
                 Rounds = p.Rounds,
                 TestsCount = p.TestsCount,
-                AvgHamming = avg,
-                StdDevHamming = std,
-                CollisionCount = coll,
-                ChiSquare = chi2,
                 BitFlipJson = System.Text.Json.JsonSerializer.Serialize(bitFlipCounts)
             };
         }

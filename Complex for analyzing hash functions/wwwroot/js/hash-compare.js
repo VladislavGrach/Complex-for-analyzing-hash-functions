@@ -1,7 +1,7 @@
 ﻿document.addEventListener("DOMContentLoaded", function () {
 
-    const ctx = document.getElementById("compareChart");
-    if (!ctx) return;
+    const canvas = document.getElementById("compareChart");
+    if (!canvas) return;
 
     const meta = {
         sac: {
@@ -12,20 +12,23 @@
             title: "Сравнение алгоритмов по Bit Independence Criterion",
             yLabel: "Максимальная корреляция"
         },
-        ham: {
-            title: "Сравнение алгоритмов по расстоянию Хэмминга",
-            yLabel: "Среднее расстояние Хэмминга (бит)"
+        mono: {
+            title: "Сравнение алгоритмов по Monobit test (NIST)",
+            yLabel: "p-value"
         }
     };
 
-    new Chart(ctx, {
+    const key = (metric || "sac").toString().trim().toLowerCase();
+    const cfg = meta[key] || meta.sac;
+
+    new Chart(canvas, {
         type: "bar",
         data: {
-            labels: algorithms,
+            labels: algorithms || [],
             datasets: [
                 {
                     label: "Среднее значение",
-                    data: mean,
+                    data: mean || [],
                     backgroundColor: "#1f77b4",
                     borderColor: "#1f77b4",
                     borderWidth: 1
@@ -38,12 +41,11 @@
                 legend: { position: "bottom" },
                 title: {
                     display: true,
-                    text: meta[metric].title
+                    text: cfg.title
                 },
                 tooltip: {
                     callbacks: {
-                        label: ctx =>
-                            `Среднее значение: ${ctx.parsed.y.toFixed(4)}`
+                        label: (ctx) => `Среднее значение: ${Number(ctx.parsed.y).toFixed(4)}`
                     }
                 }
             },
@@ -52,7 +54,7 @@
                     beginAtZero: true,
                     title: {
                         display: true,
-                        text: meta[metric].yLabel
+                        text: cfg.yLabel
                     }
                 }
             }

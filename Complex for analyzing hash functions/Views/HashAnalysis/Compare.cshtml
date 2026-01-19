@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Сравнение алгоритмов";
+    var metric = (ViewBag.Metric as string ?? "sac").Trim().ToLowerInvariant();
 }
 
 <h2 class="fw-semibold mb-3">Сравнение хэш-функций</h2>
@@ -11,18 +12,16 @@
     различных алгоритмов по выбранной статистической метрике.
 </p>
 
-<form method="get" class="mb-4">
-
+<form method="get" id="compareForm" class="mb-4">
     <div class="row g-3 align-items-end">
         <div class="col-auto">
-            <label class="form-label">Число раундов</label>
-            <input type="number" name="rounds"
+            <label class="form-label" for="roundsInput">Число раундов</label>
+            <input type="number"
+                   name="rounds"
                    value="@ViewBag.Rounds"
-                   class="form-control" min="1" />
-        </div>
-
-        <div class="col-auto">
-            <button class="btn btn-primary">Построить</button>
+                   class="form-control"
+                   min="1"
+                   id="roundsInput" />
         </div>
     </div>
 
@@ -33,32 +32,34 @@
             <input class="form-check-input"
                    type="radio"
                    name="metric"
+                   id="metric-sac"
                    value="sac"
-                   checked="@(ViewBag.Metric == "sac")">
-            <label class="form-check-label">Avalanche (SAC)</label>
+                   checked="@(metric=="sac" ? "checked" : null)"/>
+            <label class="form-check-label" for="metric-sac">Avalanche (SAC)</label>
         </div>
 
         <div class="form-check form-check-inline">
             <input class="form-check-input"
                    type="radio"
                    name="metric"
+                   id="metric-bic"
                    value="bic"
-                   checked="@(ViewBag.Metric == "bic")">
-            <label class="form-check-label">BIC</label>
+                   checked="@(metric=="bic" ? "checked" : null)" />
+            <label class="form-check-label" for="metric-bic">BIC</label>
         </div>
 
         <div class="form-check form-check-inline">
             <input class="form-check-input"
                    type="radio"
                    name="metric"
-                   value="ham"
-                   checked="@(ViewBag.Metric == "ham")">
-            <label class="form-check-label">Hamming</label>
+                   id="metric-mono"
+                   value="mono"
+                   checked="@(metric=="mono" ? "checked" : null)" />
+            <label class="form-check-label" for="metric-mono">Monobit</label>
         </div>
+
     </div>
-
 </form>
-
 
 <div class="card shadow-sm">
     <div class="card-body">
@@ -70,16 +71,24 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        const algorithms = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-        Model.Select(m => m.Algorithm)
-    ));
-
-        const mean = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-        Model.Select(m => m.Mean)
-    ));
-
-        const metric = "@ViewBag.Metric";
+        const algorithms = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.Algorithm)));
+        const mean = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.Mean)));
+        const metric = "@metric";
     </script>
 
     <script src="~/js/hash-compare.js"></script>
+
+    <script>
+        const form = document.getElementById("compareForm");
+        const roundsInput = document.getElementById("roundsInput");
+
+        document.querySelectorAll("input[name=metric]")
+            .forEach(r => r.addEventListener("change", () => form.submit()));
+
+        let roundsTimer = null;
+        roundsInput.addEventListener("input", () => {
+            clearTimeout(roundsTimer);
+            roundsTimer = setTimeout(() => form.submit(), 500);
+        });
+    </script>
 }

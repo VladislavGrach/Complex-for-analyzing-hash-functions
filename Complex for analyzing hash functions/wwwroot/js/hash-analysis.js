@@ -260,7 +260,7 @@
     const COLORS = {
         sac: { line: '#1f77b4', zone: 'rgba(31,119,180,0.25)' },
         bic: { line: '#d62728', zone: 'rgba(214,39,40,0.25)' },
-        ham: { line: '#2ca02c', zone: 'rgba(44,160,44,0.25)' }
+        mono: { line: '#2ca02c', zone: 'rgba(44,160,44,0.25)' }
     };
 
     drawChart("sacChart", "Strict Avalanche Criterion (SAC)", "Доля изменённых выходных битов",
@@ -269,6 +269,7 @@
     drawChart("bicChart", "Bit Independence Criterion (BIC)", "Максимальная корреляция",
         bicMean, bicUpper, bicLower, COLORS.bic);
 
-    drawChart("hammingChart", "Среднее расстояние Хэмминга", "Расстояние Хэмминга (бит)",
-        hamMean, hamUpper, hamLower, COLORS.ham);
+    drawChart("monobitChart", "Монобитный тест (NIST)", "p-value",
+        monoMean, monoUpper, monoLower, COLORS.mono, 0, 1);
+
 });

@@ -14,11 +14,6 @@ namespace Complex_for_analyzing_hash_functions.Models
         public int Rounds { get; set; }
         public int TestsCount { get; set; }
 
-        public double AvgHamming { get; set; }
-        public double StdDevHamming { get; set; }
-        public double ChiSquare { get; set; }
-        public int CollisionCount { get; set; }
-
         // Можно хранить агрегаты как JSON (требует конвертера EF)
         public required string BitFlipJson { get; set; }
     }
