@@ -60,4 +60,62 @@
             }
         }
     });
+
+    // ===== ПОДГОТОВКА ДАННЫХ =====
+    function buildExportRows() {
+        return (algorithms || []).map((alg, i) => ({
+            Algorithm: alg,
+            Metric: key.toUpperCase(),
+            Mean: mean[i]
+        }));
+    }
+
+    // ===== CSV =====
+    function exportCSV() {
+        const rows = buildExportRows();
+        if (!rows.length) return;
+
+        const header = Object.keys(rows[0]).join(",");
+        const body = rows
+            .map(r => Object.values(r).join(","))
+            .join("\n");
+
+        downloadFile(
+            header + "\n" + body,
+            `comparison_${key}.csv`,
+            "text/csv;charset=utf-8;"
+        );
+    }
+
+    // ===== JSON =====
+    function exportJSON() {
+        const rows = buildExportRows();
+
+        downloadFile(
+            JSON.stringify(rows, null, 2),
+            `comparison_${key}.json`,
+            "application/json"
+        );
+    }
+
+    function downloadFile(content, filename, mime) {
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+
+        URL.revokeObjectURL(url);
+    }
+
+    // ===== ОБРАБОТЧИКИ КНОПОК =====
+    if (exportCsvBtn) {
+        exportCsvBtn.addEventListener("click", exportCSV);
+    }
+
+    if (exportJsonBtn) {
+        exportJsonBtn.addEventListener("click", exportJSON);
+    }
 });
