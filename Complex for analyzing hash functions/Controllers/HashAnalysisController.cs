@@ -21,8 +21,7 @@ namespace Complex_for_analyzing_hash_functions.Controllers
         {
             return RedirectToAction(nameof(Aggregated), new { algorithm });
         }
-
-        public IActionResult Aggregated(string algorithm = "Keccak")
+        public IActionResult Aggregated(string algorithm = "Keccak", string suite = "diff")
         {
             var raw = _db.HashTestResults
                 .Where(r => r.Algorithm == algorithm)
@@ -65,7 +64,6 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                 !double.IsNaN(x.Monobit))
             .ToList();
 
-
             var aggregated = parsed
                 .GroupBy(x => x.Rounds)
                 .OrderBy(g => g.Key)
@@ -94,6 +92,8 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                 .ToList();
 
             ViewBag.Algorithm = algorithm;
+            ViewBag.Suite = suite;
+
             return View(aggregated);
         }
 

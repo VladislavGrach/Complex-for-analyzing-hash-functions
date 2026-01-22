@@ -2,19 +2,20 @@
 
 @{
     ViewData["Title"] = "Анализ по раундам";
+    var suite = ViewBag.Suite as string ?? "diff";
 }
 
 <div class="mb-4">
     <h2 class="fw-semibold">Анализ свойств хэш-функции по числу раундов</h2>
-    <p class="text-muted mb-3">
-        Визуализация изменения статистических характеристик при варьировании числа раундов.
-    </p>
 
-    <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
         <form method="get" class="row g-2 align-items-center">
+            <input type="hidden" name="suite" id="suiteInput" value="@suite" />
+
             <div class="col-auto">
                 <label class="col-form-label">Алгоритм:</label>
             </div>
+
             <div class="col-auto">
                 <select name="algorithm" class="form-select" onchange="this.form.submit()">
                     <option value="Keccak" selected="@(ViewBag.Algorithm == "Keccak")">Keccak</option>
@@ -25,58 +26,75 @@
                 </select>
             </div>
         </form>
-
-        <div class="mt-3 d-flex gap-2">
-            <a class="btn btn-outline-secondary btn-sm"
-               asp-action="AggregatedExport"
-               asp-route-algorithm="@ViewBag.Algorithm"
-               asp-route-format="csv">
-                Экспорт CSV
-            </a>
-
-            <a class="btn btn-outline-secondary btn-sm"
-               asp-action="AggregatedExport"
-               asp-route-algorithm="@ViewBag.Algorithm"
-               asp-route-format="json">
-                Экспорт JSON
-            </a>
-        </div>
-
     </div>
 </div>
 
-<div class="row g-4">
+<!-- ===== ВКЛАДКИ ===== -->
+<div class="mb-4">
+    <label class="form-label fw-semibold">Группа тестов:</label><br />
 
-    <!-- Avalanche -->
-    <div class="col-lg-6">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">Avalanche Effect</h5>
-                <canvas id="sacChart" height="140"></canvas>
+    <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="suiteRadio" value="diff" @(suite == "diff" ? "checked" : "")>
+        <label class="form-check-label">SAC / BIC</label>
+    </div>
+
+    <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="suiteRadio" value="nist" @(suite == "nist" ? "checked" : "")>
+        <label class="form-check-label">NIST</label>
+    </div>
+
+    <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="suiteRadio" value="diehard" @(suite == "diehard" ? "checked" : "")>
+        <label class="form-check-label">Diehard</label>
+    </div>
+
+    <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="suiteRadio" value="testu01" @(suite == "testu01" ? "checked" : "")>
+        <label class="form-check-label">TestU01</label>
+    </div>
+</div>
+
+
+<!-- ===== SAC + BIC ===== -->
+<div class="suite-group" data-suite="diff">
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Avalanche Effect</h5>
+                    <canvas id="sacChart" height="140"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Bit Independence Criterion</h5>
+                    <canvas id="bicChart" height="140"></canvas>
+                </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- BIC -->
-    <div class="col-lg-6">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">Bit Independence Criterion</h5>
-                <canvas id="bicChart" height="140"></canvas>
-            </div>
+<!-- ===== NIST ===== -->
+<div class="suite-group d-none" data-suite="nist">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5 class="card-title">NIST Statistical Test Suite</h5>
+            <canvas id="monobitChart" height="140"></canvas>
         </div>
     </div>
+</div>
 
-    <!-- Monobit -->
-    <div class="col-lg-12">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">Монобитный тест (NIST)</h5>
-                <canvas id="monobitChart" height="140"></canvas>
-            </div>
-        </div>
-    </div>
+<!-- Заглушки под будущие батареи -->
+<div class="suite-group d-none" data-suite="diehard">
+    <div class="alert alert-secondary">Графики Diehard будут добавлены сюда</div>
+</div>
 
+<div class="suite-group d-none" data-suite="testu01">
+    <div class="alert alert-secondary">Графики TestU01 будут добавлены сюда</div>
 </div>
 
 @section Scripts {
@@ -85,19 +103,16 @@
     <script>
         const rounds = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.Rounds)));
 
-        // ===== SAC =====
         const sacMean  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.MeanFlipRateMean)));
         const sacCi    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.MeanFlipRateCi)));
         const sacUpper = sacMean.map((m, i) => m + sacCi[i]);
         const sacLower = sacMean.map((m, i) => m - sacCi[i]);
 
-        // ===== BIC =====
         const bicMean  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.BicMaxCorrelationMean)));
         const bicCi    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.BicMaxCorrelationCi)));
         const bicUpper = bicMean.map((m, i) => m + bicCi[i]);
         const bicLower = bicMean.map((m, i) => m - bicCi[i]);
 
-        // ===== Monobit =====
         const monoMean  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.MonobitMean)));
         const monoCi    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.MonobitCi)));
         const monoUpper = monoMean.map((m, i) => m + monoCi[i]);

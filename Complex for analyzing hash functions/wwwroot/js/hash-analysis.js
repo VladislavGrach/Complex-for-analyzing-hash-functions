@@ -263,6 +263,28 @@
         mono: { line: '#2ca02c', zone: 'rgba(44,160,44,0.25)' }
     };
 
+    const suiteInput = document.getElementById("suiteInput");
+
+    function activateSuite(value) {
+        document.querySelectorAll(".suite-group")
+            .forEach(g => g.classList.add("d-none"));
+
+        const active = document.querySelector(`.suite-group[data-suite="${value}"]`);
+        if (active) active.classList.remove("d-none");
+
+        if (suiteInput) suiteInput.value = value;
+    }
+
+    const checked = document.querySelector("input[name='suiteRadio']:checked");
+    if (checked) activateSuite(checked.value);
+
+    document.querySelectorAll("input[name='suiteRadio']")
+        .forEach(radio => {
+            radio.addEventListener("change", () => {
+                activateSuite(radio.value);
+            });
+        });
+
     drawChart("sacChart", "Strict Avalanche Criterion (SAC)", "Доля изменённых выходных битов",
         sacMean, sacUpper, sacLower, COLORS.sac, 0, 1);
 
