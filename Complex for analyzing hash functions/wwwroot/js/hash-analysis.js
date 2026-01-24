@@ -1,6 +1,23 @@
 ﻿document.addEventListener("DOMContentLoaded", function () {
 
-    // Плагин: всегда белый фон (для экрана и PNG)
+    const data = window.hashAnalysisData;
+    if (!data || !data.rounds || !data.metrics) return;
+
+    const rounds = data.rounds;
+    const metricsArr = data.metrics; // массив объектов: { "SAC": {Mean,Ci,...}, "BIC": {...}, ... }
+
+    function series(name) {
+        const mean = metricsArr.map(m => (m && m[name] ? m[name].Mean : null));
+        const ci = metricsArr.map(m => (m && m[name] ? m[name].Ci : 0));
+
+        // если null, оставляем null, чтобы Chart.js мог пропускать точки (spanGaps=true)
+        const upper = mean.map((v, i) => (v == null ? null : v + (ci[i] ?? 0)));
+        const lower = mean.map((v, i) => (v == null ? null : v - (ci[i] ?? 0)));
+
+        return { mean, upper, lower };
+    }
+
+    // ===== плагины =====
     const whiteBackgroundPlugin = {
         id: 'whiteBackground',
         beforeDraw: (chart) => {
@@ -13,19 +30,16 @@
         }
     };
 
-    // Плагин: привязка tooltip к среднему (datasetIndex = 2), даже если оно скрыто.
-    // Чтобы не мигало при клике по легенде — обрабатываем только mousemove.
     const snapTooltipToMeanPlugin = {
         id: 'snapTooltipToMean',
         afterEvent(chart, args) {
             const e = args.event;
             if (!e || !chart.tooltip) return;
-            if (e.type !== 'mousemove') return; // [web:192]
+            if (e.type !== 'mousemove') return;
 
             const meanVisible = chart.isDatasetVisible(2);
             const ciVisible = chart.isDatasetVisible(1);
 
-            // Всё выключено => прячем tooltip полностью
             if (!meanVisible && !ciVisible) {
                 chart.setActiveElements([]);
                 chart.tooltip.setActiveElements([], { x: 0, y: 0 });
@@ -48,9 +62,8 @@
             }
 
             const index = points[0].index;
-
-            // Всегда якорим к "Среднее значение" (dataset 2)
             const active = [{ datasetIndex: 2, index }];
+
             chart.setActiveElements(active);
             chart.tooltip.setActiveElements(active, e);
             chart.draw();
@@ -67,7 +80,6 @@
             data: {
                 labels: rounds,
                 datasets: [
-                    // Верхняя граница (служебная)
                     {
                         data: upper,
                         borderWidth: 0,
@@ -79,7 +91,6 @@
                         cubicInterpolationMode: 'monotone',
                         spanGaps: true
                     },
-                    // Нижняя граница / заливка (управляется легендой)
                     {
                         label: 'Доверительный интервал (±σ)',
                         data: lower,
@@ -94,7 +105,6 @@
                         cubicInterpolationMode: 'monotone',
                         spanGaps: true
                     },
-                    // Среднее
                     {
                         label: 'Среднее значение',
                         data: mean,
@@ -118,12 +128,8 @@
                         position: 'bottom',
                         labels: {
                             filter: (item) => item.text !== undefined,
-
-                            // включаем pointStyle для легенды (нужно для "Среднее значение")
                             usePointStyle: true,
                             pointStyleWidth: 12,
-
-                            // "Доверительный интервал" не трогаем: вернём ему прямоугольник, а среднему дадим кружок цвета точки.
                             generateLabels: function (chart) {
                                 const labels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
 
@@ -131,31 +137,24 @@
                                     if (l.datasetIndex === 2) {
                                         const ds = chart.data.datasets[2];
                                         const c = ds.backgroundColor || ds.borderColor;
-
                                         l.usePointStyle = true;
                                         l.pointStyle = 'circle';
                                         l.fillStyle = c;
                                         l.strokeStyle = c;
                                         l.lineWidth = 0;
-                                    }
-
-                                    if (l.datasetIndex === 1) {
-                                        // оставляем стандартный прямоугольник (как было)
+                                    } else {
                                         l.usePointStyle = false;
                                     }
                                 }
-
                                 return labels;
                             }
                         }
                     },
-
                     title: { display: true, text: title },
-
                     tooltip: {
                         enabled: true,
                         position: 'nearest',
-                        displayColors: true, // цветные квадратики
+                        displayColors: true,
                         callbacks: {
                             title: function (items) {
                                 const chart = items[0]?.chart;
@@ -163,14 +162,10 @@
 
                                 const meanVisible = chart.isDatasetVisible(2);
                                 const ciVisible = chart.isDatasetVisible(1);
-
-                                // Если всё выключено — вообще не показываем tooltip
                                 if (!meanVisible && !ciVisible) return null;
 
                                 return `Количество раундов: ${items[0].label}`;
                             },
-
-                            // Контент формируем один раз (без дублей)
                             beforeBody: function (items) {
                                 const chart = items[0]?.chart;
                                 if (!chart) return [];
@@ -185,24 +180,17 @@
                                 const lowerVal = chart.data.datasets[1].data[i];
                                 const meanVal = chart.data.datasets[2].data[i];
 
-                                const fmt = (v) => Number(v).toFixed(3).replace('.', ',');
+                                const fmt = (v) => Number(v).toFixed(6).replace('.', ',');
 
                                 const lines = [];
+                                if (meanVisible && meanVal != null) lines.push(`Среднее значение: ${fmt(meanVal)}`);
 
-                                // Среднее
-                                if (meanVisible) {
-                                    lines.push(`Среднее значение: ${fmt(meanVal)}`);
-                                }
-
-                                // Интервал
-                                if (ciVisible) {
+                                if (ciVisible && upperVal != null && lowerVal != null) {
                                     const eps = 1e-12;
                                     const same = Math.abs(Number(upperVal) - Number(lowerVal)) < eps;
 
-                                    // Дополнение: если верх==низ, показываем одну строку (иначе местами получалось "пусто")
-                                    if (same) {
-                                        lines.push(`Граница: ${fmt(upperVal)}`);
-                                    } else {
+                                    if (same) lines.push(`Граница: ${fmt(upperVal)}`);
+                                    else {
                                         lines.push(`Верхняя граница: ${fmt(upperVal)}`);
                                         lines.push(`Нижняя граница: ${fmt(lowerVal)}`);
                                     }
@@ -210,14 +198,9 @@
 
                                 return lines;
                             },
-
-                            // Не добавляем строки на каждый tooltip item (чтобы не было дублей)
                             label: function () { return ''; },
-
-                            // Цвет квадратика: если среднее включено — цвет точки среднего, иначе — цвет зоны интервала
                             labelColor: function (ctx) {
                                 const chart = ctx.chart;
-
                                 const meanVisible = chart.isDatasetVisible(2);
                                 const ciVisible = chart.isDatasetVisible(1);
 
@@ -244,7 +227,6 @@
             }
         });
 
-        // ===== КНОПКА ЭКСПОРТА =====
         const btn = document.createElement("button");
         btn.className = "btn btn-outline-secondary btn-sm mt-2";
         btn.innerText = "Скачать PNG";
@@ -258,40 +240,66 @@
     }
 
     const COLORS = {
-        sac: { line: '#1f77b4', zone: 'rgba(31,119,180,0.25)' },
-        bic: { line: '#d62728', zone: 'rgba(214,39,40,0.25)' },
-        mono: { line: '#2ca02c', zone: 'rgba(44,160,44,0.25)' }
+        SAC: { line: '#1f77b4', zone: 'rgba(31,119,180,0.25)' },
+        BIC: { line: '#d62728', zone: 'rgba(214,39,40,0.25)' },
+        Monobit: { line: '#2ca02c', zone: 'rgba(44,160,44,0.25)' }
     };
 
-    const suiteInput = document.getElementById("suiteInput");
+    const algorithmForm = document.getElementById("algorithmForm");
+    const suiteHidden = document.getElementById("suiteHidden");
+
+    if (algorithmForm && suiteHidden) {
+        algorithmForm.addEventListener("submit", () => {
+            const checkedSuite = document.querySelector('input[name="suiteRadio"]:checked');
+            suiteHidden.value = checkedSuite ? checkedSuite.value : "diff";
+        });
+    }
 
     function activateSuite(value) {
         document.querySelectorAll(".suite-group")
             .forEach(g => g.classList.add("d-none"));
 
         const active = document.querySelector(`.suite-group[data-suite="${value}"]`);
-        if (active) active.classList.remove("d-none");
+        if (active) {
+            active.classList.remove("d-none");
+        }
 
-        if (suiteInput) suiteInput.value = value;
+        if (suiteHidden) {
+            suiteHidden.value = value;
+        }
+
+        const url = new URL(window.location.href);
+        url.searchParams.set("suite", value);
+        window.history.replaceState({}, "", url);
     }
 
-    const checked = document.querySelector("input[name='suiteRadio']:checked");
-    if (checked) activateSuite(checked.value);
+    // 1) при загрузке берём suite из URL (если нет — diff)
+    const url = new URL(window.location.href);
+    const initialSuite = (url.searchParams.get("suite") || "diff").toLowerCase();
 
-    document.querySelectorAll("input[name='suiteRadio']")
-        .forEach(radio => {
-            radio.addEventListener("change", () => {
-                activateSuite(radio.value);
-            });
-        });
+    // выставим радио визуально (на случай если server-side checked не совпал)
+    const initialRadio = document.querySelector(`input[name="suiteRadio"][value="${initialSuite}"]`);
 
+    if (initialRadio) initialRadio.checked = true;
+
+    activateSuite(initialSuite);
+
+    // 2) слушаем правильное имя радиокнопок: name="suite"
+    document.querySelectorAll('input[name="suiteRadio"]').forEach(radio => {
+        radio.addEventListener("change", () => activateSuite(radio.value));
+    });
+
+
+    // Строим конкретные графики
+    const sac = series("SAC");
     drawChart("sacChart", "Strict Avalanche Criterion (SAC)", "Доля изменённых выходных битов",
-        sacMean, sacUpper, sacLower, COLORS.sac, 0, 1);
+        sac.mean, sac.upper, sac.lower, COLORS.SAC, 0, 1);
 
+    const bic = series("BIC");
     drawChart("bicChart", "Bit Independence Criterion (BIC)", "Максимальная корреляция",
-        bicMean, bicUpper, bicLower, COLORS.bic);
+        bic.mean, bic.upper, bic.lower, COLORS.BIC);
 
+    const mono = series("Monobit");
     drawChart("monobitChart", "Монобитный тест (NIST)", "p-value",
-        monoMean, monoUpper, monoLower, COLORS.mono, 0, 1);
-
+        mono.mean, mono.upper, mono.lower, COLORS.Monobit, 0, 1);
 });

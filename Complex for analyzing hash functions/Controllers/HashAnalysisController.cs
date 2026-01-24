@@ -21,6 +21,7 @@ namespace Complex_for_analyzing_hash_functions.Controllers
         {
             return RedirectToAction(nameof(Aggregated), new { algorithm });
         }
+
         public IActionResult Aggregated(string algorithm = "Keccak", string suite = "diff")
         {
             var raw = _db.HashTestResults
@@ -78,15 +79,27 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                     return new RoundStatisticAggregatedPoint
                     {
                         Rounds = g.Key,
-
-                        MeanFlipRateMean = g.Average(x => x.Sac),
-                        MeanFlipRateCi = n > 1 ? 1.96 * sacStd / Math.Sqrt(n) : 0,
-
-                        BicMaxCorrelationMean = g.Average(x => x.Bic),
-                        BicMaxCorrelationCi = n > 1 ? 1.96 * bicStd / Math.Sqrt(n) : 0,
-
-                        MonobitMean = g.Average(x => x.Monobit),
-                        MonobitCi = n > 1 ? 1.96 * monoStd / Math.Sqrt(n) : 0
+                        Metrics =
+                        {
+                            ["SAC"] = new AggregatedMetric
+                            {
+                                Mean = g.Average(x => x.Sac),
+                                Std  = sacStd,
+                                Ci   = n > 1 ? 1.96 * sacStd / Math.Sqrt(n) : 0
+                            },
+                            ["BIC"] = new AggregatedMetric
+                            {
+                                Mean = g.Average(x => x.Bic),
+                                Std  = bicStd,
+                                Ci   = n > 1 ? 1.96 * bicStd / Math.Sqrt(n) : 0
+                            },
+                            ["Monobit"] = new AggregatedMetric
+                            {
+                                Mean = g.Average(x => x.Monobit),
+                                Std  = monoStd,
+                                Ci   = n > 1 ? 1.96 * monoStd / Math.Sqrt(n) : 0
+                            }
+                        }
                     };
                 })
                 .ToList();

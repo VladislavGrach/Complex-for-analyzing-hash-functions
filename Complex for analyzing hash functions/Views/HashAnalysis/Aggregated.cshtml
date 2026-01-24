@@ -9,8 +9,8 @@
     <h2 class="fw-semibold">Анализ свойств хэш-функции по числу раундов</h2>
 
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <form method="get" class="row g-2 align-items-center">
-            <input type="hidden" name="suite" id="suiteInput" value="@suite" />
+        <form method="get" id="algorithmForm" class="row g-2 align-items-center">
+            <input type="hidden" name="suite" id="suiteHidden" value="" />
 
             <div class="col-auto">
                 <label class="col-form-label">Алгоритм:</label>
@@ -18,14 +18,15 @@
 
             <div class="col-auto">
                 <select name="algorithm" class="form-select" onchange="this.form.submit()">
-                    <option value="Keccak" selected="@(ViewBag.Algorithm == "Keccak")">Keccak</option>
-                    <option value="Blake" selected="@(ViewBag.Algorithm == "Blake")">BLAKE-256</option>
-                    <option value="Blake2s" selected="@(ViewBag.Algorithm == "Blake2s")">BLAKE2s</option>
-                    <option value="Blake2b" selected="@(ViewBag.Algorithm == "Blake2b")">BLAKE2b</option>
-                    <option value="Blake3" selected="@(ViewBag.Algorithm == "Blake3")">BLAKE3</option>
+                    <!option value="Keccak"  @(ViewBag.Algorithm == "Keccak" ? "selected" : null)>Keccak</!option>
+                    <!option value="Blake"   @(ViewBag.Algorithm == "Blake" ? "selected" : null)>BLAKE-256</!option>
+                    <!option value="Blake2s" @(ViewBag.Algorithm == "Blake2s" ? "selected" : null)>BLAKE2s</!option>
+                    <!option value="Blake2b" @(ViewBag.Algorithm == "Blake2b" ? "selected" : null)>BLAKE2b</!option>
+                    <!option value="Blake3"  @(ViewBag.Algorithm == "Blake3" ? "selected" : null)>BLAKE3</!option>
                 </select>
             </div>
         </form>
+
     </div>
 </div>
 
@@ -34,23 +35,28 @@
     <label class="form-label fw-semibold">Группа тестов:</label><br />
 
     <div class="form-check form-check-inline">
-        <input class="form-check-input" type="radio" name="suiteRadio" value="diff" @(suite == "diff" ? "checked" : "")>
-        <label class="form-check-label">SAC / BIC</label>
+        <input class="form-check-input" type="radio" name="suiteRadio" id="suite-diff" value="diff"
+        @((string.IsNullOrWhiteSpace(Context.Request.Query["suite"]) || Context.Request.Query["suite"] == "diff")
+            ? "checked" : null)>
+        <label class="form-check-label" for="suite-diff">SAC / BIC</label>
     </div>
 
     <div class="form-check form-check-inline">
-        <input class="form-check-input" type="radio" name="suiteRadio" value="nist" @(suite == "nist" ? "checked" : "")>
-        <label class="form-check-label">NIST</label>
+        <input class="form-check-input" type="radio" name="suiteRadio" id="suite-nist" value="nist"
+        @(Context.Request.Query["suite"] == "nist" ? "checked" : null)>
+        <label class="form-check-label" for="suite-nist">NIST</label>
     </div>
 
     <div class="form-check form-check-inline">
-        <input class="form-check-input" type="radio" name="suiteRadio" value="diehard" @(suite == "diehard" ? "checked" : "")>
-        <label class="form-check-label">Diehard</label>
+        <input class="form-check-input" type="radio" name="suiteRadio" id="suite-diehard" value="diehard"
+        @(Context.Request.Query["suite"] == "diehard" ? "checked" : null)>
+        <label class="form-check-label" for="suite-diehard">Diehard</label>
     </div>
 
     <div class="form-check form-check-inline">
-        <input class="form-check-input" type="radio" name="suiteRadio" value="testu01" @(suite == "testu01" ? "checked" : "")>
-        <label class="form-check-label">TestU01</label>
+        <input class="form-check-input" type="radio" name="suiteRadio" id="suite-testu01" value="testu01"
+        @(Context.Request.Query["suite"] == "testu01" ? "checked" : null)>
+        <label class="form-check-label" for="suite-testu01">TestU01</label>
     </div>
 </div>
 
@@ -101,22 +107,12 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        const rounds = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.Rounds)));
-
-        const sacMean  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.MeanFlipRateMean)));
-        const sacCi    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.MeanFlipRateCi)));
-        const sacUpper = sacMean.map((m, i) => m + sacCi[i]);
-        const sacLower = sacMean.map((m, i) => m - sacCi[i]);
-
-        const bicMean  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.BicMaxCorrelationMean)));
-        const bicCi    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.BicMaxCorrelationCi)));
-        const bicUpper = bicMean.map((m, i) => m + bicCi[i]);
-        const bicLower = bicMean.map((m, i) => m - bicCi[i]);
-
-        const monoMean  = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.MonobitMean)));
-        const monoCi    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.MonobitCi)));
-        const monoUpper = monoMean.map((m, i) => m + monoCi[i]);
-        const monoLower = monoMean.map((m, i) => m - monoCi[i]);
+        window.hashAnalysisData = {
+            rounds: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.Rounds))),
+            metrics: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            Model.Select(x => x.Metrics)
+        ))
+        };
     </script>
 
     <script src="~/js/hash-analysis.js"></script>
