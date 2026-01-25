@@ -22,6 +22,51 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             return RedirectToAction(nameof(Aggregated), new { algorithm });
         }
 
+        static readonly string[] NistTests =
+        {
+            "Monobit",
+            "FrequencyWithinBlock",
+            "Runs",
+            "LongestRunOfOnes",
+            "BinaryMatrixRank",
+            "DiscreteFourier",
+            "NonOverlappingTemplate",
+            "OverlappingTemplate",
+            "MaurerUniversal",
+            "LempelZiv",
+            "LinearComplexity",
+            "Serial",
+            "ApproximateEntropy",
+            "Cusum",
+            "RandomExcursions",
+            "RandomExcursionsVariant"
+        };
+
+        static readonly string[] DiehardTests =
+        {
+            "BirthdaySpacings",
+            "CountOnes",
+            "MatrixRanks",
+            "OverlappingPermutations",
+            "RunsDiehard",
+            "GcdDiehard",
+            "SqueezeDiehard",
+            "CrapsDiehard"
+        };
+
+        static readonly string[] TestU01Tests =
+        {
+            "Collision",
+            "Gap",
+            "Autocorrelation",
+            "Spectral",
+            "HammingWeight",
+            "SerialTest",
+            "MultinomialTest",
+            "ClosePairs",
+            "CouponCollector"
+        };
+
         public IActionResult Aggregated(string algorithm = "Keccak", string suite = "diff")
         {
             var raw = _db.HashTestResults
@@ -33,36 +78,64 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                 using var doc = JsonDocument.Parse(r.BitFlipJson);
                 var root = JsonUtils.NormalizeToObject(doc.RootElement);
 
-                double sac =
-                    root.TryGetProperty("Avalanche", out var a) &&
-                    a.TryGetProperty("MeanFlipRate", out var m)
-                        ? m.GetDouble()
-                        : double.NaN;
+                var metrics = new Dictionary<string, double?>();
 
-                double bic =
-                    root.TryGetProperty("BIC", out var b) &&
-                    b.TryGetProperty("MaxCorrelationAbs", out var c)
-                        ? c.GetDouble()
-                        : double.NaN;
+                // === NIST ===
+                if (root.TryGetProperty("NIST", out var nist))
+                {
+                    foreach (var test in NistTests)
+                    {
+                        if (nist.TryGetProperty(test, out var v))
+                            metrics[test] = v.GetDouble();
+                        else
+                            metrics[test] = null;
+                    }
+                }
 
-                double monobit =
-                    root.TryGetProperty("NIST", out var n) &&
-                    n.TryGetProperty("Monobit", out var mb)
-                        ? mb.GetDouble()
-                        : double.NaN;
+                // ===== DIEHARD =====
+                if (root.TryGetProperty("Diehard", out var diehard))
+                {
+                    foreach (var test in DiehardTests)
+                    {
+                        if (diehard.TryGetProperty(test, out var v))
+                            metrics[test] = v.GetDouble();
+                        else
+                            metrics[test] = null;
+                    }
+                }
+
+                // ===== TESTU01 =====
+                if (root.TryGetProperty("TestU01", out var testu01))
+                {
+                    foreach (var test in TestU01Tests)
+                    {
+                        if (testu01.TryGetProperty(test, out var v))
+                            metrics[test] = v.GetDouble();
+                        else
+                            metrics[test] = null;
+                    }
+                }
+
+                // === SAC ===
+                if (root.TryGetProperty("Avalanche", out var a) &&
+                    a.TryGetProperty("MeanFlipRate", out var sac))
+                {
+                    metrics["SAC"] = sac.GetDouble();
+                }
+
+                // === BIC ===
+                if (root.TryGetProperty("BIC", out var b) &&
+                    b.TryGetProperty("MaxCorrelationAbs", out var bic))
+                {
+                    metrics["BIC"] = bic.GetDouble();
+                }
 
                 return new
                 {
                     r.Rounds,
-                    Sac = sac,
-                    Bic = bic,
-                    Monobit = monobit
+                    Metrics = metrics
                 };
             })
-            .Where(x =>
-                !double.IsNaN(x.Sac) &&
-                !double.IsNaN(x.Bic) &&
-                !double.IsNaN(x.Monobit))
             .ToList();
 
             var aggregated = parsed
@@ -70,39 +143,43 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                 .OrderBy(g => g.Key)
                 .Select(g =>
                 {
-                    int n = g.Count();
-
-                    double sacStd = n > 1 ? Std(g.Select(x => x.Sac)) : 0;
-                    double bicStd = n > 1 ? Std(g.Select(x => x.Bic)) : 0;
-                    double monoStd = n > 1 ? Std(g.Select(x => x.Monobit)) : 0;
-
-                    return new RoundStatisticAggregatedPoint
+                    var point = new RoundStatisticAggregatedPoint
                     {
-                        Rounds = g.Key,
-                        Metrics =
-                        {
-                            ["SAC"] = new AggregatedMetric
-                            {
-                                Mean = g.Average(x => x.Sac),
-                                Std  = sacStd,
-                                Ci   = n > 1 ? 1.96 * sacStd / Math.Sqrt(n) : 0
-                            },
-                            ["BIC"] = new AggregatedMetric
-                            {
-                                Mean = g.Average(x => x.Bic),
-                                Std  = bicStd,
-                                Ci   = n > 1 ? 1.96 * bicStd / Math.Sqrt(n) : 0
-                            },
-                            ["Monobit"] = new AggregatedMetric
-                            {
-                                Mean = g.Average(x => x.Monobit),
-                                Std  = monoStd,
-                                Ci   = n > 1 ? 1.96 * monoStd / Math.Sqrt(n) : 0
-                            }
-                        }
+                        Rounds = g.Key
                     };
+
+                    var allMetricNames = g
+                        .SelectMany(x => x.Metrics.Keys)
+                        .Distinct();
+
+                    foreach (var name in allMetricNames)
+                    {
+                        var values = g
+                            .Select(x =>
+                                x.Metrics.TryGetValue(name, out var v) ? v : null)
+                            .Where(v => v.HasValue)
+                            .Select(v => v.Value)
+                            .ToList();
+
+                        if (values.Count == 0)
+                            continue;
+
+                        double mean = values.Average();
+                        double std = values.Count > 1 ? Std(values) : 0;
+                        double ci = values.Count > 1 ? 1.96 * std / Math.Sqrt(values.Count) : 0;
+
+                        point.Metrics[name] = new AggregatedMetric
+                        {
+                            Mean = mean,
+                            Std = std,
+                            Ci = ci
+                        };
+                    }
+
+                    return point;
                 })
-                .ToList();
+            .ToList();
+
 
             ViewBag.Algorithm = algorithm;
             ViewBag.Suite = suite;

@@ -289,6 +289,47 @@
         radio.addEventListener("change", () => activateSuite(radio.value));
     });
 
+    const NIST_TESTS = [
+        { key: "Monobit", title: "Monobit Test", yMin: 0, yMax: 1 },
+        { key: "FrequencyWithinBlock", title: "Frequency Within Block", yMin: 0, yMax: 1 },
+        { key: "Runs", title: "Runs Test", yMin: 0, yMax: 1 },
+        { key: "LongestRunOfOnes", title: "Longest Run of Ones", yMin: 0, yMax: 1 },
+        { key: "BinaryMatrixRank", title: "Binary Matrix Rank", yMin: 0, yMax: 1 },
+        { key: "DiscreteFourier", title: "Discrete Fourier Transform", yMin: 0, yMax: 1 },
+        { key: "NonOverlappingTemplate", title: "Non-overlapping Template", yMin: 0, yMax: 1 },
+        { key: "OverlappingTemplate", title: "Overlapping Template", yMin: 0, yMax: 1 },
+        { key: "MaurerUniversal", title: "Maurer Universal", yMin: 0, yMax: 1 },
+        { key: "LempelZiv", title: "Lempel-Ziv", yMin: 0, yMax: 1 },
+        { key: "LinearComplexity", title: "Linear Complexity", yMin: 0, yMax: 1 },
+        { key: "Serial", title: "Serial Test", yMin: 0, yMax: 1 },
+        { key: "ApproximateEntropy", title: "Approximate Entropy", yMin: 0, yMax: 1 },
+        { key: "Cusum", title: "Cumulative Sums", yMin: 0, yMax: 1 },
+        { key: "RandomExcursions", title: "Random Excursions", yMin: 0, yMax: 1 },
+        { key: "RandomExcursionsVariant", title: "Random Excursions Variant", yMin: 0, yMax: 1 }
+    ];
+
+    const DIEHARD_TESTS = [
+        { key: "BirthdaySpacings", title: "Birthday Spacings Test", yMin: 0, yMax: 1 },
+        { key: "CountOnes", title: "Count Ones Test", yMin: 0, yMax: 1 },
+        { key: "MatrixRanks", title: "Matrix Ranks Test", yMin: 0, yMax: 1 },
+        { key: "OverlappingPermutations", title: "Overlapping Permutations Test", yMin: 0, yMax: 1 },
+        { key: "RunsDiehard", title: "Runs Test (Diehard)", yMin: 0, yMax: 1 },
+        { key: "GcdDiehard", title: "GCD Test (Diehard)", yMin: 0, yMax: 1 },
+        { key: "SqueezeDiehard", title: "Squeeze Test (Diehard)", yMin: 0, yMax: 1 },
+        { key: "CrapsDiehard", title: "Craps Test (Diehard)", yMin: 0, yMax: 1 }
+    ];
+
+    const TESTU01_TESTS = [
+        { key: "Collision", title: "Collision Test", yMin: 0, yMax: 1 },
+        { key: "Gap", title: "Gap Test", yMin: 0, yMax: 1 },
+        { key: "Autocorrelation", title: "Autocorrelation Test", yMin: 0, yMax: 1 },
+        { key: "Spectral", title: "Spectral Test", yMin: 0, yMax: 1 },
+        { key: "HammingWeight", title: "Hamming Weight Test", yMin: 0, yMax: 1 },
+        { key: "SerialTest", title: "Serial Test (TestU01)", yMin: 0, yMax: 1 },
+        { key: "MultinomialTest", title: "Multinomial Test", yMin: 0, yMax: 1 },
+        { key: "ClosePairs", title: "Close Pairs Test", yMin: 0, yMax: 1 },
+        { key: "CouponCollector", title: "Coupon Collector Test", yMin: 0, yMax: 1 }
+    ];
 
     // Строим конкретные графики
     const sac = series("SAC");
@@ -299,7 +340,129 @@
     drawChart("bicChart", "Bit Independence Criterion (BIC)", "Максимальная корреляция",
         bic.mean, bic.upper, bic.lower, COLORS.BIC);
 
-    const mono = series("Monobit");
-    drawChart("monobitChart", "Монобитный тест (NIST)", "p-value",
-        mono.mean, mono.upper, mono.lower, COLORS.Monobit, 0, 1);
+    const nistContainer = document.getElementById("nistCharts");
+
+    NIST_TESTS.forEach(test => {
+        const col = document.createElement("div");
+        col.className = "col-lg-6";
+
+        const card = document.createElement("div");
+        card.className = "card shadow-sm";
+
+        const body = document.createElement("div");
+        body.className = "card-body";
+
+        const h5 = document.createElement("h5");
+        h5.className = "card-title";
+        h5.innerText = test.title;
+
+        const canvas = document.createElement("canvas");
+        const canvasId = `nist-${test.key}`;
+        canvas.id = canvasId;
+        canvas.height = 140;
+
+        body.appendChild(h5);
+        body.appendChild(canvas);
+        card.appendChild(body);
+        col.appendChild(card);
+        nistContainer.appendChild(col);
+
+        const s = series(test.key);
+
+        drawChart(
+            canvasId,
+            test.title,
+            "p-value",
+            s.mean,
+            s.upper,
+            s.lower,
+            { line: "#2ca02c", zone: "rgba(44,160,44,0.25)" },
+            test.yMin,
+            test.yMax
+        );
+    });
+
+    const diehardContainer = document.getElementById("diehardCharts");
+
+    DIEHARD_TESTS.forEach(test => {
+        const col = document.createElement("div");
+        col.className = "col-lg-6";
+
+        const card = document.createElement("div");
+        card.className = "card shadow-sm";
+
+        const body = document.createElement("div");
+        body.className = "card-body";
+
+        const h5 = document.createElement("h5");
+        h5.className = "card-title";
+        h5.innerText = test.title;
+
+        const canvas = document.createElement("canvas");
+        const canvasId = `diehard-${test.key}`;
+        canvas.id = canvasId;
+        canvas.height = 140;
+
+        body.appendChild(h5);
+        body.appendChild(canvas);
+        card.appendChild(body);
+        col.appendChild(card);
+        diehardContainer.appendChild(col);
+
+        const s = series(test.key);
+
+        drawChart(
+            canvasId,
+            test.title,
+            "p-value",
+            s.mean,
+            s.upper,
+            s.lower,
+            { line: "#9467bd", zone: "rgba(148,103,189,0.25)" },
+            test.yMin,
+            test.yMax
+        );
+    });
+
+    const testu01Container = document.getElementById("testu01Charts");
+
+    TESTU01_TESTS.forEach(test => {
+        const col = document.createElement("div");
+        col.className = "col-lg-6";
+
+        const card = document.createElement("div");
+        card.className = "card shadow-sm";
+
+        const body = document.createElement("div");
+        body.className = "card-body";
+
+        const h5 = document.createElement("h5");
+        h5.className = "card-title";
+        h5.innerText = test.title;
+
+        const canvas = document.createElement("canvas");
+        const canvasId = `testu01-${test.key}`;
+        canvas.id = canvasId;
+        canvas.height = 140;
+
+        body.appendChild(h5);
+        body.appendChild(canvas);
+        card.appendChild(body);
+        col.appendChild(card);
+        testu01Container.appendChild(col);
+
+        const s = series(test.key);
+
+        drawChart(
+            canvasId,
+            test.title,
+            "p-value",
+            s.mean,
+            s.upper,
+            s.lower,
+            { line: "#8c564b", zone: "rgba(140,86,75,0.25)" },
+            test.yMin,
+            test.yMax
+        );
+    });
 });

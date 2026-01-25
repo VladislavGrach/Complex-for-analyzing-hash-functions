@@ -86,21 +86,17 @@
 
 <!-- ===== NIST ===== -->
 <div class="suite-group d-none" data-suite="nist">
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h5 class="card-title">NIST Statistical Test Suite</h5>
-            <canvas id="monobitChart" height="140"></canvas>
-        </div>
-    </div>
+    <div class="row g-4" id="nistCharts"></div>
 </div>
 
-<!-- Заглушки под будущие батареи -->
+<!-- ===== Diehard ===== -->
 <div class="suite-group d-none" data-suite="diehard">
-    <div class="alert alert-secondary">Графики Diehard будут добавлены сюда</div>
+    <div class="row g-4" id="diehardCharts"></div>
 </div>
 
+<!-- ===== TestU01 ===== -->
 <div class="suite-group d-none" data-suite="testu01">
-    <div class="alert alert-secondary">Графики TestU01 будут добавлены сюда</div>
+    <div class="row g-4" id="testu01Charts"></div>
 </div>
 
 @section Scripts {
@@ -109,9 +105,7 @@
     <script>
         window.hashAnalysisData = {
             rounds: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.Rounds))),
-            metrics: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-            Model.Select(x => x.Metrics)
-        ))
+            metrics: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.Metrics)))
         };
     </script>
 
