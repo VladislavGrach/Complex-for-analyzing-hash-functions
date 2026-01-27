@@ -196,48 +196,76 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             return Math.Sqrt(arr.Sum(v => (v - mean) * (v - mean)) / (arr.Length - 1));
         }
 
-        public IActionResult Compare(int rounds = 8, string metric = "sac")
+        public IActionResult Compare(
+            int rounds = 8,
+            string suite = "diff",
+            string metric = "SAC")
         {
+            suite = (suite ?? "diff").Trim();
+            metric = (metric ?? "SAC").Trim();
+
             var algorithms = new[] { "Keccak", "Blake", "Blake2s", "Blake2b", "Blake3" };
-            metric = (metric ?? "sac").Trim().ToLowerInvariant();
 
             var raw = _db.HashTestResults
-                .Where(r => r.Rounds == rounds && algorithms.Contains(r.Algorithm))
+                .Where(r =>
+                    r.Rounds == rounds &&
+                    algorithms.Contains(r.Algorithm))
                 .ToList();
 
-            // Берём только выбранную метрику => меньше шансов получить пусто из-за NaN в других полях
             var parsed = raw.Select(r =>
             {
                 using var doc = JsonDocument.Parse(r.BitFlipJson);
                 var root = JsonUtils.NormalizeToObject(doc.RootElement);
 
-                double value = metric switch
+                double value = double.NaN;
+
+                switch (suite)
                 {
-                    "sac" => (root.TryGetProperty("Avalanche", out var a) &&
-                              a.ValueKind == JsonValueKind.Object &&
-                              a.TryGetProperty("MeanFlipRate", out var mfr) &&
-                              mfr.ValueKind == JsonValueKind.Number)
-                             ? mfr.GetDouble()
-                             : double.NaN,
+                    case "diff":
+                        if (metric.Equals("SAC", StringComparison.OrdinalIgnoreCase) &&
+                            root.TryGetProperty("Avalanche", out var a) &&
+                            a.TryGetProperty("MeanFlipRate", out var mfr))
+                        {
+                            value = mfr.GetDouble();
+                        }
+                        else if (metric.Equals("BIC", StringComparison.OrdinalIgnoreCase) &&
+                            root.TryGetProperty("BIC", out var b) &&
+                            b.TryGetProperty("MaxCorrelationAbs", out var mc))
+                        {
+                            value = mc.GetDouble();
+                        }
+                        break;
 
-                    "bic" => (root.TryGetProperty("BIC", out var b) &&
-                              b.ValueKind == JsonValueKind.Object &&
-                              b.TryGetProperty("MaxCorrelationAbs", out var mc) &&
-                              mc.ValueKind == JsonValueKind.Number)
-                             ? mc.GetDouble()
-                             : double.NaN,
+                    case "nist":
+                        if (root.TryGetProperty("NIST", out var nist) &&
+                            nist.TryGetProperty(metric, out var nval))
+                        {
+                            value = nval.GetDouble();
+                        }
+                        break;
 
-                    "mono" => (root.TryGetProperty("NIST", out var nist) &&
-                               nist.ValueKind == JsonValueKind.Object &&
-                               nist.TryGetProperty("Monobit", out var mb) &&
-                               mb.ValueKind == JsonValueKind.Number)
-                              ? mb.GetDouble()
-                              : double.NaN,
+                    case "diehard":
+                        if (root.TryGetProperty("Diehard", out var diehard) &&
+                            diehard.TryGetProperty(metric, out var dval))
+                        {
+                            value = dval.GetDouble();
+                        }
+                        break;
 
-                    _ => double.NaN
+                    case "testu01":
+                        if (root.TryGetProperty("TestU01", out var testu01) &&
+                            testu01.TryGetProperty(metric, out var tval))
+                        {
+                            value = tval.GetDouble();
+                        }
+                        break;
+                }
+
+                return new
+                {
+                    r.Algorithm,
+                    Value = value
                 };
-
-                return new { r.Algorithm, Value = value };
             })
             .Where(x => !double.IsNaN(x.Value))
             .ToList();
@@ -259,7 +287,8 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                 .ToList();
 
             ViewBag.Rounds = rounds;
-            ViewBag.Metric = metric; // "sac"/"bic"/"mono"
+            ViewBag.Suite = suite;
+            ViewBag.Metric = metric;
 
             return View(comparison);
         }
