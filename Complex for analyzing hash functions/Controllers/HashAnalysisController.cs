@@ -293,6 +293,82 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             return View(comparison);
         }
 
+        [HttpGet]
+        public IActionResult CompareData(int rounds = 8, string suite = "diff", string metric = "SAC")
+        {
+            suite = (suite ?? "diff").Trim();
+            metric = (metric ?? "SAC").Trim();
+
+            var algorithms = new[] { "Keccak", "Blake", "Blake2s", "Blake2b", "Blake3" };
+
+            var raw = _db.HashTestResults
+                .Where(r => r.Rounds == rounds && algorithms.Contains(r.Algorithm))
+                .ToList();
+
+            var parsed = raw.Select(r =>
+            {
+                using var doc = JsonDocument.Parse(r.BitFlipJson);
+                var root = JsonUtils.NormalizeToObject(doc.RootElement);
+
+                double value = double.NaN;
+
+                switch (suite)
+                {
+                    case "diff":
+                        if (metric.Equals("SAC", StringComparison.OrdinalIgnoreCase) &&
+                            root.TryGetProperty("Avalanche", out var a) &&
+                            a.TryGetProperty("MeanFlipRate", out var mfr))
+                            value = mfr.GetDouble();
+                        else if (metric.Equals("BIC", StringComparison.OrdinalIgnoreCase) &&
+                            root.TryGetProperty("BIC", out var b) &&
+                            b.TryGetProperty("MaxCorrelationAbs", out var mc))
+                            value = mc.GetDouble();
+                        break;
+
+                    case "nist":
+                        if (root.TryGetProperty("NIST", out var nist) && nist.TryGetProperty(metric, out var nval))
+                            value = nval.GetDouble();
+                        break;
+
+                    case "diehard":
+                        if (root.TryGetProperty("Diehard", out var diehard) && diehard.TryGetProperty(metric, out var dval))
+                            value = dval.GetDouble();
+                        break;
+
+                    case "testu01":
+                        if (root.TryGetProperty("TestU01", out var testu01) && testu01.TryGetProperty(metric, out var tval))
+                            value = tval.GetDouble();
+                        break;
+                }
+
+                return new { r.Algorithm, Value = value };
+            })
+            .Where(x => !double.IsNaN(x.Value))
+            .ToList();
+
+            var comparison = parsed
+                .GroupBy(x => x.Algorithm)
+                .Select(g =>
+                {
+                    var arr = g.Select(x => x.Value).ToArray();
+                    return new AlgorithmComparisonPoint
+                    {
+                        Algorithm = g.Key,
+                        Mean = arr.Average(),
+                        Std = arr.Length > 1 ? Std(arr) : 0.0
+                    };
+                })
+                .OrderBy(x => x.Algorithm)
+                .ToList();
+
+            // фронту удобнее так:
+            return Json(new
+            {
+                algorithms = comparison.Select(x => x.Algorithm).ToArray(),
+                mean = comparison.Select(x => x.Mean).ToArray()
+            });
+        }
+
         public IActionResult AggregatedExport(string algorithm = "Keccak", string format = "csv")
         {
             var raw = _db.HashTestResults
