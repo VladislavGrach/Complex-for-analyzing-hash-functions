@@ -8,14 +8,26 @@
 
     function series(name) {
         const mean = metricsArr.map(m => (m && m[name] ? m[name].Mean : null));
-        const ci = metricsArr.map(m => (m && m[name] ? m[name].Ci : 0));
 
-        // если null, оставляем null, чтобы Chart.js мог пропускать точки (spanGaps=true)
+        // Новый правильный путь: сервер отдал готовые границы
+        const upperFromServer = metricsArr.map(m => (m && m[name] ? (m[name].Upper ?? null) : null));
+        const lowerFromServer = metricsArr.map(m => (m && m[name] ? (m[name].Lower ?? null) : null));
+
+        const hasBounds = upperFromServer.some(v => v != null) && lowerFromServer.some(v => v != null);
+
+        if (hasBounds) {
+            return { mean, upper: upperFromServer, lower: lowerFromServer };
+        }
+
+        // Старый путь (fallback): mean ± Ci
+        const ci = metricsArr.map(m => (m && m[name] ? (m[name].Ci ?? 0) : 0));
+
         const upper = mean.map((v, i) => (v == null ? null : v + (ci[i] ?? 0)));
         const lower = mean.map((v, i) => (v == null ? null : v - (ci[i] ?? 0)));
 
         return { mean, upper, lower };
     }
+
 
     // ===== плагины =====
     const whiteBackgroundPlugin = {

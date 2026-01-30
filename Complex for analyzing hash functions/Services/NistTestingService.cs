@@ -18,23 +18,36 @@ namespace The_complex_of_testing_hash_functions.Services
             return pValue;
         }
 
-        // Комплементарная функция ошибок (erfc) через аппроксимацию Абрамовича
+        //// Комплементарная функция ошибок (erfc)
         private double Erfc(double x)
         {
-            double z = Math.Abs(x);
-            double t = 1.0 / (1.0 + 0.5 * z);
-            double tau = t * Math.Exp(-z * z - 1.26551223 +
-                                      t * (1.00002368 +
-                                      t * (0.37409196 +
-                                      t * (0.09678418 +
-                                      t * (-0.18628806 +
-                                      t * (0.27886807 +
-                                      t * (-1.13520398 +
-                                      t * (1.48851587 +
-                                      t * (-0.82215223 +
-                                      t * 0.17087277)))))))));
+            if (double.IsNaN(x)) return double.NaN;
 
-            return x >= 0.0 ? tau : 2.0 - tau;
+            double z = Math.Abs(x);
+
+            if (z > 26.0)
+                return x < 0 ? 2.0 : 0.0;
+
+            double t = 1.0 / (1.0 + 0.5 * z);
+
+            double ans = t * Math.Exp(
+                -z * z - 1.26551223 +
+                t * (1.00002368 +
+                t * (0.37409196 +
+                t * (0.09678418 +
+                t * (-0.18628806 +
+                t * (0.27886807 +
+                t * (-1.13520398 +
+                t * (1.48851587 +
+                t * (-0.82215223 +
+                t * 0.17087277)))))))));
+
+            double result = x >= 0 ? ans : 2.0 - ans;
+
+            if (result < 0.0) return 0.0;
+            if (result > 1.0) return 1.0;
+
+            return result;
         }
         #endregion
 

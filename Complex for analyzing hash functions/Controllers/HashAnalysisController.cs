@@ -164,28 +164,74 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                         if (values.Count == 0)
                             continue;
 
-                        double mean = values.Average();
-                        double std = values.Count > 1 ? Std(values) : 0;
-                        double ci = values.Count > 1 ? 1.96 * std / Math.Sqrt(values.Count) : 0;
-
-                        point.Metrics[name] = new AggregatedMetric
+                        // BOOTSTRAP КВАНТИЛИ для p-value + обычные расчёты для SAC/BIC
+                        if (IsPValueMetric(name))
                         {
-                            Mean = mean,
-                            Std = std,
-                            Ci = ci
-                        };
+                            // Bootstrap 95% квантили: 2.5% и 97.5%
+                            var validP = values.Where(p => p >= 0 && p <= 1 && !double.IsNaN(p)).ToList();
+                            if (validP.Count == 0) continue;
+
+                            validP.Sort();
+                            double meanP = validP.Average();
+
+                            double lowerP, upperP;
+                            if (validP.Count <= 5)
+                            {
+                                // Мало точек — используем min/max
+                                lowerP = validP.Min();
+                                upperP = validP.Max();
+                            }
+                            else
+                            {
+                                // 95% квантили
+                                lowerP = validP[(int)(0.025 * (validP.Count - 1))];
+                                upperP = validP[(int)(0.975 * (validP.Count - 1))];
+                            }
+
+                            double pseudoStd = (upperP - lowerP) / 4.0; // чтобы JS мог делать mean ± pseudoStd
+
+                            point.Metrics[name] = new AggregatedMetric
+                            {
+                                Mean = meanP,
+                                Std = pseudoStd,
+                                Ci = pseudoStd,  // совместимость с твоим JS
+                                Lower = lowerP,
+                                Upper = upperP
+                            };
+                        }
+                        else
+                        {
+                            // SAC/BIC: обычные расчёты (не p-value)
+                            double mean0 = values.Average();
+                            double std0 = values.Count > 1 ? Std(values) : 0;
+
+                            point.Metrics[name] = new AggregatedMetric
+                            {
+                                Mean = mean0,
+                                Std = std0,
+                                Ci = std0,  // JS использует Ci как "радиус"
+                                Lower = mean0 - std0,
+                                Upper = mean0 + std0
+                            };
+                        }
                     }
 
                     return point;
                 })
-            .ToList();
-
+                .ToList();
 
             ViewBag.Algorithm = algorithm;
             ViewBag.Suite = suite;
 
             return View(aggregated);
         }
+
+        private static bool IsPValueMetric(string name)
+        {
+            return !string.Equals(name, "SAC", StringComparison.OrdinalIgnoreCase) &&
+                   !string.Equals(name, "BIC", StringComparison.OrdinalIgnoreCase);
+        }
+
 
         private static double Std(IEnumerable<double> values)
         {
@@ -194,6 +240,37 @@ namespace Complex_for_analyzing_hash_functions.Controllers
 
             double mean = arr.Average();
             return Math.Sqrt(arr.Sum(v => (v - mean) * (v - mean)) / (arr.Length - 1));
+        }
+
+        private const double P_EPS = 1e-12;
+
+        private static double Clamp01Open(double p)
+        {
+            if (double.IsNaN(p)) return double.NaN;
+            if (p <= P_EPS) return P_EPS;
+            if (p >= 1.0 - P_EPS) return 1.0 - P_EPS;
+            return p;
+        }
+
+        private static double Logit(double p)
+        {
+            p = Clamp01Open(p);
+            return Math.Log(p / (1.0 - p));
+        }
+
+        private static double Expit(double z)
+        {
+            // численно стабильный вариант
+            if (z >= 0)
+            {
+                var ez = Math.Exp(-z);
+                return 1.0 / (1.0 + ez);
+            }
+            else
+            {
+                var ez = Math.Exp(z);
+                return ez / (1.0 + ez);
+            }
         }
 
         public IActionResult Compare(
