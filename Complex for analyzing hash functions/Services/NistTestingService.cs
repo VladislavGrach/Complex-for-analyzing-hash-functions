@@ -1,4 +1,5 @@
 ﻿using Complex_for_analyzing_hash_functions.Interfaces;
+using MathNet.Numerics.IntegralTransforms;
 using System.Numerics;
 using System.Text;
 
@@ -16,38 +17,6 @@ namespace The_complex_of_testing_hash_functions.Services
             double sObs = Math.Abs(sum) / Math.Sqrt(n);
             double pValue = Erfc(sObs / Math.Sqrt(2.0));
             return pValue;
-        }
-
-        //// Комплементарная функция ошибок (erfc)
-        private double Erfc(double x)
-        {
-            if (double.IsNaN(x)) return double.NaN;
-
-            double z = Math.Abs(x);
-
-            if (z > 26.0)
-                return x < 0 ? 2.0 : 0.0;
-
-            double t = 1.0 / (1.0 + 0.5 * z);
-
-            double ans = t * Math.Exp(
-                -z * z - 1.26551223 +
-                t * (1.00002368 +
-                t * (0.37409196 +
-                t * (0.09678418 +
-                t * (-0.18628806 +
-                t * (0.27886807 +
-                t * (-1.13520398 +
-                t * (1.48851587 +
-                t * (-0.82215223 +
-                t * 0.17087277)))))))));
-
-            double result = x >= 0 ? ans : 2.0 - ans;
-
-            if (result < 0.0) return 0.0;
-            if (result > 1.0) return 1.0;
-
-            return result;
         }
         #endregion
 
@@ -105,22 +74,46 @@ namespace The_complex_of_testing_hash_functions.Services
         // Тест на самую длинную последовательность единиц в блоке
         public double LongestRunOfOnesTest(string bits, int blockSize = 128)
         {
-            int n = bits.Length;
-            int numBlocks = n / blockSize;
-            if (numBlocks == 0) return double.NaN;
-
-            int[] frequencies = new int[4]; // Категории по длине серии
-            for (int i = 0; i < numBlocks; i++)
+            if (blockSize != 128)
             {
-                string block = bits.Substring(i * blockSize, blockSize);
-                int maxRun = 0, currentRun = 0;
+                throw new ArgumentException("Данный тест реализован только для blockSize = 128 (M=128 по NIST SP 800-22)");
+            }
 
-                foreach (char bit in block)
+            int n = bits.Length;
+            if (n < 128)
+                return double.NaN;
+
+            int N = n / blockSize;           // количество блоков
+            if (N < 100)
+            {
+                if (N == 0) return double.NaN;
+                // иначе продолжаем, но результат будет менее надёжным
+            }
+
+            double[] pi = new double[]
+            {
+                0.1174035788,   // ν0: longest run ≤ 4
+                0.2429559595,   // ν1: = 5
+                0.2493228532,   // ν2: = 6
+                0.1751990705,   // ν3: = 7
+                0.1027013343,   // ν4: = 8
+                0.1124172037    // ν5: ≥ 9
+            };
+
+            int[] nu = new int[6];           // счётчики для каждой категории (0..5)
+
+            for (int blk = 0; blk < N; blk++)
+            {
+                int maxRun = 0;
+                int currentRun = 0;
+
+                int start = blk * blockSize;
+                for (int i = 0; i < blockSize; i++)
                 {
-                    if (bit == '1')
+                    if (bits[start + i] == '1')
                     {
                         currentRun++;
-                        maxRun = Math.Max(maxRun, currentRun);
+                        if (currentRun > maxRun) maxRun = currentRun;
                     }
                     else
                     {
@@ -128,25 +121,28 @@ namespace The_complex_of_testing_hash_functions.Services
                     }
                 }
 
-                // Категории согласно NIST (для blockSize = 128)
-                if (maxRun <= 4) frequencies[0]++;
-                else if (maxRun == 5) frequencies[1]++;
-                else if (maxRun == 6) frequencies[2]++;
-                else frequencies[3]++;
+                if (maxRun <= 4) nu[0]++;
+                else if (maxRun == 5) nu[1]++;
+                else if (maxRun == 6) nu[2]++;
+                else if (maxRun == 7) nu[3]++;
+                else if (maxRun == 8) nu[4]++;
+                else nu[5]++;   // ≥9
             }
 
-            // Ожидаемые вероятности
-            double[] pi = { 0.1174, 0.2430, 0.2493, 0.3903 };
-            double chiSquared = 0;
-
-            for (int i = 0; i < pi.Length; i++)
+            // Вычисление статистики хи-квадрат
+            double chi2 = 0.0;
+            for (int i = 0; i < 6; i++)
             {
-                double expected = numBlocks * pi[i];
-                double diff = frequencies[i] - expected;
-                chiSquared += (diff * diff) / expected;
+                double expected = N * pi[i];
+                double diff = nu[i] - expected;
+                chi2 += (diff * diff) / expected;
             }
 
-            return 1.0 - ChiSquaredCDF(chiSquared, pi.Length - 1); // k = 3
+            // p-value = Q(χ²/2, df/2) = igamc(df/2, χ²/2)
+            double df = 5.0;
+            double pValue = Igamc(df / 2.0, chi2 / 2.0);
+
+            return pValue;
         }
         #endregion
 
@@ -154,65 +150,55 @@ namespace The_complex_of_testing_hash_functions.Services
         // Тест ранга бинарной матрицы
         public double BinaryMatrixRankTest(string bits)
         {
-            int M = 32, Q = 32;
-            int matrixSize = M * Q;
+            const int M = 32;
+            const int Q = 32;
+            const int MATRIX_BITS = M * Q; // 1024
 
-            int MIN_MATRICES = 1;
+            int n = bits.Length;
 
-            int availableBits = bits.Length;
-            int neededBits = MIN_MATRICES * matrixSize;
+            if (n < MATRIX_BITS)
+                return double.NaN;
 
-            // Если не хватает — дополняем случайными битами
-            if (availableBits < neededBits)
-            {
-                int missing = neededBits - availableBits;
-                var rnd = new Random();
+            long N = n / MATRIX_BITS;
 
-                StringBuilder pad = new StringBuilder(bits, availableBits + missing);
-                for (int i = 0; i < missing; i++)
-                    pad.Append(rnd.Next(2) == 1 ? '1' : '0');
+            if (N < 38)
+                return double.NaN;
 
-                bits = pad.ToString();
-                availableBits = bits.Length;
-            }
+            double[] pi = { 0.2888, 0.5776, 0.1336 };
 
-            long N = availableBits / matrixSize;
-            if (N == 0) N = 1; // защита, хотя ситуация уже исключена паддингом
+            int fullRank = 0;
+            int rankM1 = 0;
+            int lower = 0;
 
-            int fullRank = 0, rankMinusOne = 0, below = 0;
-
-            for (int i = 0; i < N; i++)
+            for (long blk = 0; blk < N; blk++)
             {
                 int[,] matrix = new int[M, Q];
-                int index = i * matrixSize;
+                int pos = (int)(blk * MATRIX_BITS);
 
-                for (int row = 0; row < M; row++)
-                {
-                    for (int col = 0; col < Q; col++)
-                    {
-                        matrix[row, col] = bits[index++] == '1' ? 1 : 0;
-                    }
-                }
+                for (int r = 0; r < M; r++)
+                    for (int c = 0; c < Q; c++)
+                        matrix[r, c] = bits[pos++] == '1' ? 1 : 0;
 
                 int rank = ComputeRank(matrix);
+
                 if (rank == M) fullRank++;
-                else if (rank == M - 1) rankMinusOne++;
-                else below++;
+                else if (rank == M - 1) rankM1++;
+                else lower++;
             }
 
-            double[] expectedProbabilities = { 0.2888, 0.5776, 0.1336 };
-            int[] observedCounts = { fullRank, rankMinusOne, below };
+            double chi2 = 0.0;
+            int[] observed = { fullRank, rankM1, lower };
 
-            double chiSquared = 0.0;
             for (int i = 0; i < 3; i++)
             {
-                double expected = expectedProbabilities[i] * N;
-                chiSquared += Math.Pow(observedCounts[i] - expected, 2) / expected;
+                double exp = N * pi[i];
+                double diff = observed[i] - exp;
+                chi2 += (diff * diff) / exp;
             }
 
-            double pValue = 1.0 - ChiSquaredCDF(chiSquared, 2);
-
-            return double.IsFinite(pValue) ? pValue : 0.0;
+            // Для df=2 → p-value = exp(-χ²/2)
+            double pValue = Math.Exp(-chi2 / 2.0);
+            return pValue;
         }
         #endregion
 
@@ -221,52 +207,44 @@ namespace The_complex_of_testing_hash_functions.Services
         public double DiscreteFourierTransformTest(string bits)
         {
             int n = bits.Length;
-            // NIST рекомендует достаточно большую длину; минимально возьмём 100 как у вас
-            if (n < 100) return -1;
 
-            // 1) Преобразуем 0 -> -1, 1 -> +1
-            double[] sequence = bits.Select(b => b == '1' ? 1.0 : -1.0).ToArray();
+            // NIST рекомендует n >= 1_000_000
+            if (n < 100_000)
+                return double.NaN;
 
-            // 2) Вычисляем ДПФ (наивно O(n^2)). При больших n рекомендуется заменить на FFT.
-            Complex[] spectrum = new Complex[n];
-            for (int k = 0; k < n; k++)
-            {
-                double real = 0.0;
-                double imag = 0.0;
-                double twoPiOverN = 2.0 * Math.PI * k / n;
-                for (int t = 0; t < n; t++)
-                {
-                    double angle = twoPiOverN * t;
-                    double s = sequence[t];
-                    real += s * Math.Cos(angle);
-                    imag -= s * Math.Sin(angle);
-                }
-                spectrum[k] = new Complex(real, imag);
-            }
+            // 1. Преобразование битов: 0 → -1, 1 → +1
+            Complex[] data = new Complex[n];
+            for (int i = 0; i < n; i++)
+                data[i] = new Complex(bits[i] == '1' ? 1.0 : -1.0, 0.0);
 
-            // 3) Амплитуды (модули)
-            double[] magnitudes = spectrum.Select(c => c.Magnitude).ToArray();
+            // 2. FFT
+            Fourier.Forward(data, FourierOptions.Matlab);
 
-            // 4) Порог T по NIST (для уровня значимости 0.05)
+            // 3. Порог T (α = 0.05)
             double T = Math.Sqrt(Math.Log(1.0 / 0.05) * n);
 
-            // 5) Рассчитываем число пиков, *меньших* порога, в первой половине спектра
-            // NIST рассматривает первые n/2 значений спектра (обычно используют k = 0..n/2-1)
+            // 4. Считаем пики ниже порога
             int m = n / 2;
-            int countLess = magnitudes.Take(m).Count(val => val < T);
+            int N0 = 0;
 
-            // 6) Ожидаемое число таких пиков и дисперсия согласно NIST
-            double expected = 0.95 * n / 2.0;
-            double variance = n * 0.95 * 0.05 / 4.0;
+            // k = 1 .. n/2 (k=0 игнорируем)
+            for (int k = 1; k <= m; k++)
+            {
+                double magnitude = data[k].Magnitude;
+                if (magnitude < T)
+                    N0++;
+            }
 
-            // 7) Вычисляем статистику и p-value
-            double d = (countLess - expected) / Math.Sqrt(variance);
+            // 5. Статистика
+            double expected = 0.95 * m;
+            double variance = m * 0.95 * 0.05;
 
-            // erfc(x) — комплементарная ошибка; pValue = erfc(|d| / sqrt(2))
+            double d = (N0 - expected) / Math.Sqrt(variance);
+
+            // 6. p-value
             double pValue = Erfc(Math.Abs(d) / Math.Sqrt(2.0));
 
-            if (!double.IsFinite(pValue)) return 0.0;
-            return pValue;
+            return double.IsFinite(pValue) ? pValue : 0.0;
         }
         #endregion
 
@@ -337,22 +315,69 @@ namespace The_complex_of_testing_hash_functions.Services
 
         #region Overlapping Template Matching Test
         // Тест на совпадающие шаблоны
-        public double OverlappingTemplateMatchingTest(string bits, int m = 10)
+        public double OverlappingTemplateMatchingTest(string bits, int m = 9)
         {
-            if (m <= 0 || m > bits.Length) return -1;
+            int n = bits.Length;
+            if (n < 10000) return double.NaN;
 
-            int pattern = Convert.ToInt32(new string('1', m), 2);
-            int count = 0;
+            // Рекомендуемая длина блока NIST ≈ 1032 для m=9/10
+            int M = 1032;
+            int N = n / M;
+            if (N < 5) return double.NaN;  // слишком мало блоков
 
-            for (int i = 0; i <= bits.Length - m; i++)
+            // Точные вероятности π для m=9 (из NIST или приближённые)
+            // Для m=9 (часто используемые значения)
+            double[] pi;
+            if (m == 9)
             {
-                int subPattern = Convert.ToInt32(bits.Substring(i, m), 2);
-                if (subPattern == pattern) count++;
+                pi = new double[] { 0.367879, 0.183940, 0.137945, 0.099793, 0.073262, 0.137181 };
+            }
+            else if (m == 10)
+            {
+                pi = new double[] { 0.367879, 0.183940, 0.137945, 0.099793, 0.073262, 0.137181 }; // близко
+            }
+            else
+            {
+                return double.NaN; // поддерживаем только m=9/10
             }
 
-            // Примерная оценка p-value
-            double lambda = (bits.Length - m + 1) / Math.Pow(2, m);
-            double pValue = Math.Exp(-lambda) * Math.Pow(lambda, count) / Factorial(count);
+            int[] nu = new int[6];  // счётчики категорий
+
+            for (int blk = 0; blk < N; blk++)
+            {
+                string block = bits.Substring(blk * M, M);
+                int count = 0;
+
+                for (int i = 0; i <= M - m; i++)
+                {
+                    bool match = true;
+                    for (int j = 0; j < m; j++)
+                    {
+                        if (block[i + j] != '1') { match = false; break; }
+                    }
+                    if (match) count++;
+                }
+
+                // Категоризация
+                if (count <= 0) nu[0]++;
+                else if (count == 1) nu[1]++;
+                else if (count == 2) nu[2]++;
+                else if (count == 3) nu[3]++;
+                else if (count == 4) nu[4]++;
+                else nu[5]++;
+            }
+
+            double chi2 = 0.0;
+            for (int i = 0; i < 6; i++)
+            {
+                double expected = N * pi[i];
+                if (expected < 5) return double.NaN; // условие применимости χ²
+                chi2 += Math.Pow(nu[i] - expected, 2) / expected;
+            }
+
+            // p-value = igamc(df/2, χ²/2), df=5
+            double pValue = Igamc(2.5, chi2 / 2.0);  // нужна твоя реализация Igamc / GammaUpperRegularized
+
             return pValue;
         }
         #endregion
@@ -458,68 +483,123 @@ namespace The_complex_of_testing_hash_functions.Services
 
         #region Lempel Ziv Compression Test
         // Тест Лемпеля-Зива
-        // 1) Обёртка: генерируем поток хэшей (правильный padding) и запускаем тест
-        private const int LZ_MIN_BITS_REQUIRED = 1_500_000;
-
-        public double LempelZivCompressionTestOnHashStream(
-            Func<byte[], byte[]> hashFunction,
-            int requiredBits = LZ_MIN_BITS_REQUIRED)
-        {
-            string bits = GenerateHashStream(hashFunction, requiredBits);
-            return LempelZivCompressionTest(bits);
-        }
-
-        // 2) Основной тест Lempel-Ziv: делает парсинг по всей строке
         public double LempelZivCompressionTest(string bits)
         {
             int n = bits.Length;
+            if (n < 1_000_000)
+                return double.NaN;
 
-            if (n < LZ_MIN_BITS_REQUIRED)
-                return 0.0;
-
-            // --- 1. Считаем число фраз по точному LZ76 ---
             int c = CountLZ76Phrases(bits);
+            Console.WriteLine($"c={c}");
+            // NIST SP 800-22 constants (empirical)
+            const double mean = 69588.2019;
+            const double sigma = 73.23726011;
 
-            // --- 2. Статистика по NIST SP 800-22 ---
-            double log2n = Math.Log(n, 2);
-            double mean = n / log2n;
-            double variance = 0.266 * n / Math.Pow(log2n, 3);
-
-            double z = (c - mean) / Math.Sqrt(variance);
+            double z = (c - mean) / sigma;
+            Console.WriteLine($"z={z}");
             double pValue = Erfc(Math.Abs(z) / Math.Sqrt(2));
-
+            Console.WriteLine($"pValue={pValue}");
             return Math.Clamp(pValue, 0.0, 1.0);
         }
 
         private int CountLZ76Phrases(string bits)
         {
             int n = bits.Length;
-            int c = 0;
             int i = 0;
+            int c = 1;
 
-            while (i < n)
+            var dictionary = new HashSet<string>();
+            dictionary.Add(bits[0].ToString());
+
+            while (i + c < n)
             {
-                int maxLen = 0;
+                string phrase = bits.Substring(i, c);
 
-                // ищем самую длинную подстроку, которая уже встречалась
-                for (int j = 0; j < i; j++)
+                if (dictionary.Contains(phrase))
                 {
-                    int k = 0;
-                    while (i + k < n && bits[j + k] == bits[i + k])
-                    {
-                        k++;
-                    }
-
-                    if (k > maxLen)
-                        maxLen = k;
+                    c++;
                 }
-
-                // новая фраза
-                c++;
-                i += maxLen + 1;
+                else
+                {
+                    dictionary.Add(phrase);
+                    i += c;
+                    c = 1;
+                }
             }
 
-            return c;
+            return dictionary.Count;
+        }
+
+        public class SuffixAutomaton
+        {
+            private class State
+            {
+                public int Link;
+                public Dictionary<char, int> Next = new();
+                public int Length;
+            }
+
+            private readonly List<State> _states = new();
+            private int _last;
+
+            public SuffixAutomaton()
+            {
+                _states.Add(new State { Link = -1, Length = 0 });
+                _last = 0;
+            }
+
+            public void Extend(char c)
+            {
+                int cur = _states.Count;
+                _states.Add(new State { Length = _states[_last].Length + 1 });
+
+                int p = _last;
+                while (p != -1 && !_states[p].Next.ContainsKey(c))
+                {
+                    _states[p].Next[c] = cur;
+                    p = _states[p].Link;
+                }
+
+                if (p == -1)
+                {
+                    _states[cur].Link = 0;
+                }
+                else
+                {
+                    int q = _states[p].Next[c];
+                    if (_states[p].Length + 1 == _states[q].Length)
+                    {
+                        _states[cur].Link = q;
+                    }
+                    else
+                    {
+                        int clone = _states.Count;
+                        _states.Add(new State
+                        {
+                            Length = _states[p].Length + 1,
+                            Next = new Dictionary<char, int>(_states[q].Next),
+                            Link = _states[q].Link
+                        });
+
+                        while (p != -1 && _states[p].Next[c] == q)
+                        {
+                            _states[p].Next[c] = clone;
+                            p = _states[p].Link;
+                        }
+
+                        _states[q].Link = _states[cur].Link = clone;
+                    }
+                }
+
+                _last = cur;
+            }
+
+            public bool TryTransition(int state, char c, out int nextState)
+            {
+                return _states[state].Next.TryGetValue(c, out nextState);
+            }
+
+            public int InitialState => 0;
         }
         #endregion
 
@@ -645,78 +725,79 @@ namespace The_complex_of_testing_hash_functions.Services
         {
             int n = bits.Length;
             if (n < 1_000_000)
-                return 0.0;
+            {
+                return double.NaN;
+            }
 
+            // 1. Convert to ±1
             int[] x = new int[n];
             for (int i = 0; i < n; i++)
                 x[i] = bits[i] == '1' ? 1 : -1;
 
+            // 2. Partial sums
             int[] S = new int[n + 1];
             for (int i = 0; i < n; i++)
                 S[i + 1] = S[i] + x[i];
 
-            List<int> cycles = new List<int>();
-            cycles.Add(0);
+            // 3. Cycles
+            List<int> cycles = new() { 0 };
             for (int i = 1; i <= n; i++)
                 if (S[i] == 0)
                     cycles.Add(i);
 
             int J = cycles.Count - 1;
             if (J < 100)
-                return 0.0;
+                return double.NaN;
 
             int[] states = { -4, -3, -2, -1, 1, 2, 3, 4 };
+            double minP = 1.0;
 
-            double pValueProduct = 1.0;
-
-            // Количество посещений
             foreach (int s in states)
             {
-                int K = 6; // number of bins
-                int[] frequencies = new int[K];
+                int[] v = new int[6]; // 0..4, >=5
 
+                // 4. Count visits per cycle
                 for (int j = 0; j < J; j++)
                 {
-                    int start = cycles[j];
-                    int end = cycles[j + 1];
-
-                    int v = 0;
-
-                    for (int i = start + 1; i <= end; i++)
+                    int count = 0;
+                    for (int i = cycles[j] + 1; i < cycles[j + 1]; i++)
                         if (S[i] == s)
-                            v++;
+                            count++;
 
-                    int idx = v >= 5 ? 5 : v;
-                    frequencies[idx]++;
+                    v[Math.Min(count, 5)]++;
                 }
 
-                double[] P = GetNistExcursionProbabilities(s);
+                // 5. Probabilities depend on |s|
+                double[] pi = GetExcursionProbabilities(Math.Abs(s));
 
+                // 6. Chi-square
                 double chi2 = 0.0;
                 for (int k = 0; k < 6; k++)
                 {
-                    double expected = J * P[k];
-                    chi2 += Math.Pow(frequencies[k] - expected, 2.0) / expected;
+                    double expected = J * pi[k];
+                    if (expected < 5.0)
+                        return double.NaN;
+
+                    chi2 += (v[k] - expected) * (v[k] - expected) / expected;
                 }
+                // 7. p-value (df = 5)
+                double p = Igamc(2.5, chi2 / 2.0);
 
-                double pValue = Igamc(2.5, chi2 / 2.0); // Complemented gamma (df=5)
-                pValueProduct *= pValue;
+                minP = Math.Min(minP, p);
             }
-
-            return pValueProduct;
+            return minP;
         }
 
-        private double[] GetNistExcursionProbabilities(int s)
+        private double[] GetExcursionProbabilities(int absState)
         {
-            // NIST SP 800-22 Table 4
-            switch (Math.Abs(s))
+            return absState switch
             {
-                case 1: return new[] { 0.5, 0.25, 0.125, 0.0625, 0.03125, 0.03125 };
-                case 2: return new[] { 0.75, 0.0625, 0.046875, 0.03515625, 0.0263672, 0.0791016 };
-                case 3: return new[] { 0.8333333, 0.0277778, 0.0185185, 0.0123457, 0.00823045, 0.099794 };
-                case 4: return new[] { 0.875, 0.015625, 0.00976562, 0.00610352, 0.0038147, 0.0890503 };
-                default: throw new ArgumentException("state must be 1..4");
-            }
+                1 => new[] { 0.5, 0.25, 0.125, 0.0625, 0.03125, 0.03125 },
+                2 => new[] { 0.75, 0.0625, 0.046875, 0.03515625, 0.0263671875, 0.0791015625 },
+                3 => new[] { 0.8333333333, 0.0277777778, 0.0185185185, 0.0123456790, 0.0082304527, 0.0997942387 },
+                4 => new[] { 0.875, 0.015625, 0.009765625, 0.0061035156, 0.0038146973, 0.0896911621 },
+                _ => throw new ArgumentException("State must be 1..4")
+            };
         }
 
         #endregion
@@ -726,59 +807,43 @@ namespace The_complex_of_testing_hash_functions.Services
         public double RandomExcursionsVariantTest(string bits)
         {
             int n = bits.Length;
-            if (n < 1000) return -1;
+            if (n < 1_000_000)
+                return double.NaN;
 
-            int[] x = new int[n];
+            int[] S = new int[n + 1];
             for (int i = 0; i < n; i++)
-                x[i] = bits[i] == '1' ? 1 : -1;
+                S[i + 1] = S[i] + (bits[i] == '1' ? 1 : -1);
 
-            List<int> cumulativeSum = new();
-            int s = 0;
-            for (int i = 0; i < x.Length; i++)
+            Dictionary<int, int> count = new();
+            for (int i = 1; i <= n; i++)
             {
-                s += x[i];
-                cumulativeSum.Add(s);
+                int v = S[i];
+                if (v == 0 || Math.Abs(v) > 9) continue;
+
+                count.TryGetValue(v, out int tmp);
+                count[v] = tmp + 1;
             }
 
-            Dictionary<int, int> stateVisits = new();
-            for (int i = 0; i < cumulativeSum.Count; i++)
-            {
-                int val = cumulativeSum[i];
-                if (val == 0) continue;
-                if (Math.Abs(val) > 9) continue;
+            double minP = 1.0;
 
-                if (!stateVisits.ContainsKey(val)) stateVisits[val] = 0;
-                stateVisits[val]++;
+            for (int x = -9; x <= 9; x++)
+            {
+                if (x == 0) continue;
+
+                int Nx = count.ContainsKey(x) ? count[x] : 0;
+                double pi = 1.0 / (2.0 * Math.Abs(x));
+                double expected = n * pi;
+                double variance = n * pi * (1.0 - pi);
+
+                if (variance <= 0) continue;
+
+                double Z = Math.Abs(Nx - expected) / Math.Sqrt(variance);
+                double p = Erfc(Z / Math.Sqrt(2.0));
+
+                minP = Math.Min(minP, p);
             }
 
-            double sqrt2n = Math.Sqrt(2.0 * n);
-            List<double> pValues = new();
-
-            for (int xState = -9; xState <= 9; xState++)
-            {
-                if (xState == 0) continue;
-
-                int count = stateVisits.ContainsKey(xState) ? stateVisits[xState] : 0;
-                double expected = 2.0 * (NormalCDF((xState + 0.5) / sqrt2n) - NormalCDF((xState - 0.5) / sqrt2n));
-                double p = Math.Exp(-2.0 * n * Math.Pow(expected - ((double)count / n), 2));
-                pValues.Add(p);
-            }
-
-            return pValues.Count > 0 ? pValues.Min() : -1;
-        }
-        #endregion
-
-        #region For Random Excursions Test
-        public double RandomExcursionsTestOnHashStream(Func<byte[], byte[]> hashFunction, int requiredBits = 1_000_000)
-        {
-            string bits = GenerateHashStream(hashFunction, requiredBits);
-            return RandomExcursionsTest(bits);
-        }
-
-        public double RandomExcursionsVariantTestOnHashStream(Func<byte[], byte[]> hashFunction, int requiredBits = 1_000_000)
-        {
-            string bits = GenerateHashStream(hashFunction, requiredBits);
-            return RandomExcursionsVariantTest(bits);
+            return minP;
         }
         #endregion
 
@@ -1040,6 +1105,38 @@ namespace The_complex_of_testing_hash_functions.Services
             double ser = 1.000000000190015;
             for (int j = 0; j <= 5; j++) ser += coef[j] / ++y;
             return -tmp + Math.Log(2.5066282746310005 * ser / x);
+        }
+
+        // Комплементарная функция ошибок (erfc)
+        private double Erfc(double x)
+        {
+            if (double.IsNaN(x)) return double.NaN;
+
+            double z = Math.Abs(x);
+
+            if (z > 26.0)
+                return x < 0 ? 2.0 : 0.0;
+
+            double t = 1.0 / (1.0 + 0.5 * z);
+
+            double ans = t * Math.Exp(
+                -z * z - 1.26551223 +
+                t * (1.00002368 +
+                t * (0.37409196 +
+                t * (0.09678418 +
+                t * (-0.18628806 +
+                t * (0.27886807 +
+                t * (-1.13520398 +
+                t * (1.48851587 +
+                t * (-0.82215223 +
+                t * 0.17087277)))))))));
+
+            double result = x >= 0 ? ans : 2.0 - ans;
+
+            if (result < 0.0) return 0.0;
+            if (result > 1.0) return 1.0;
+
+            return result;
         }
 
         public string GenerateHashStream(Func<byte[], byte[]> hashFunction, int requiredBits)

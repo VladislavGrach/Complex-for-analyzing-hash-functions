@@ -74,37 +74,28 @@ namespace Complex_for_analyzing_hash_functions.Controllers
 
             // --- 4. BIT STRING ---
             string bits = BitUtils.BytesToBitString(sampleHash);
+            string streamBits = _nist.GenerateHashStream(
+                input => hasher.ComputeHash(input, p.Rounds),
+                1_500_000);
+
 
             // === NIST TESTS ===
             double monobit = _nist.MonobitTest(bits);
             double freqWithin = _nist.FrequencyTestWithinBlock(bits, 128);
             double runsNist = _nist.RunsTest(bits);
             double longestRun = _nist.LongestRunOfOnesTest(bits, 128);
-            double matrixRank = _nist.BinaryMatrixRankTest(bits);
-            double dft = _nist.DiscreteFourierTransformTest(bits);
-            double nonOverlap = _nist.NonOverlappingTemplateMatchingTest(bits, "000111");
-            double overlap = _nist.OverlappingTemplateMatchingTest(bits, 10);
-
-            double maurer = _nist.MaurersUniversalTestOnHashStream(
-                input => hasher.ComputeHash(input, p.Rounds),
-                1_500_000);
-
-            double lempelZiv = _nist.LempelZivCompressionTestOnHashStream(
-                input => hasher.ComputeHash(input, p.Rounds),
-                1_500_000);
-
+            double matrixRank = _nist.BinaryMatrixRankTest(streamBits);
+            double dft = _nist.DiscreteFourierTransformTest(streamBits);
+            double nonOverlap = _nist.NonOverlappingTemplateMatchingTest(streamBits, "000111");
+            double overlap = _nist.OverlappingTemplateMatchingTest(streamBits, 9);
+            double maurer = _nist.MaurersUniversalTest(streamBits);
+            double lempelZiv = _nist.LempelZivCompressionTest(streamBits);
             double linearComplexity = _nist.LinearComplexityTest(bits, 32);
             double serial = _nist.SerialTest(bits, 2);
             double approxEntropy = _nist.ApproximateEntropyTest(bits, 2);
             double cusum = _nist.CusumTest(bits);
-
-            double excursions = _nist.RandomExcursionsTestOnHashStream(
-                input => hasher.ComputeHash(input, p.Rounds),
-                1_500_000);
-
-            double excursionsVar = _nist.RandomExcursionsVariantTestOnHashStream(
-                input => hasher.ComputeHash(input, p.Rounds),
-                1_500_000);
+            double excursions = _nist.RandomExcursionsTest(streamBits);
+            double excursionsVar = _nist.RandomExcursionsVariantTest(streamBits);
 
             // === DIEHARD TESTS ===
             double birthday = _diehard.BirthdaySpacingsTest(bits);
@@ -257,4 +248,3 @@ namespace Complex_for_analyzing_hash_functions.Controllers
         }
     }
 }
-
