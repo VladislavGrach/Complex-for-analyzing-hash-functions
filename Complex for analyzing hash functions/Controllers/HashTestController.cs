@@ -76,7 +76,7 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             string bits = BitUtils.BytesToBitString(sampleHash);
             string streamBits = _nist.GenerateHashStream(
                 input => hasher.ComputeHash(input, p.Rounds),
-                1_500_000);
+                4_500_000);
 
 
             // === NIST TESTS ===
@@ -97,27 +97,17 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             double excursions = _nist.RandomExcursionsTest(streamBits);
             double excursionsVar = _nist.RandomExcursionsVariantTest(streamBits);
 
+
             // === DIEHARD TESTS ===
-            double birthday = _diehard.BirthdaySpacingsTest(bits);
+            double birthday = _diehard.BirthdaySpacingsTest(streamBits);
             double countOnes = _diehard.CountOnesTest(bits);
-
-            double rank = _diehard.RanksOfMatricesTest(
-                bits,
-                input => hasher.ComputeHash(input, p.Rounds));
-
             double overlapPerm = _diehard.OverlappingPermutationsTest(bits);
-            double runsDiehard = _diehard.RunsTest(bits);
+            double runsDiehard = _diehard.RunsTest(streamBits);
+            double squeeze = _diehard.SqueezeTest(streamBits);
+            double rank = _diehard.RanksOfMatricesTest(streamBits);
+            double gcd = _diehard.GcdTest(streamBits);
+            double craps = _diehard.CrapsTest(streamBits);
 
-            double gcd = _diehard.GcdTest(
-                bits: "",
-                hashFunction: input => hasher.ComputeHash(input, p.Rounds),
-                requiredWordsDefault: 200_000);
-
-            double squeeze = _diehard.SqueezeTest(bits);
-
-            double craps = _diehard.CrapsTestOnHashStream(
-                input => hasher.ComputeHash(input, p.Rounds),
-                requiredBits: 1_500_000);
 
             // === TEST U01 ===
             double collisionU01 = _testu01.CollisionTestOnHashStream(

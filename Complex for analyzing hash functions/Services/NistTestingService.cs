@@ -1,6 +1,9 @@
 ﻿using Complex_for_analyzing_hash_functions.Interfaces;
 using MathNet.Numerics.IntegralTransforms;
+using System.Diagnostics.Tracing;
+using System.Drawing;
 using System.Numerics;
+using System.Security.Policy;
 using System.Text;
 
 
@@ -384,83 +387,86 @@ namespace The_complex_of_testing_hash_functions.Services
 
         #region Maurers Universal Test
         // Универсальный тест Маурера
-        private const int MAURER_MIN_BITS = 1_500_000;
-
-        public double MaurersUniversalTestOnHashStream(
-            Func<byte[], byte[]> hashFunction,
-            int requiredBits = MAURER_MIN_BITS)
-        {
-            if (hashFunction == null)
-                throw new ArgumentNullException(nameof(hashFunction));
-
-            if (requiredBits < MAURER_MIN_BITS)
-                requiredBits = MAURER_MIN_BITS;
-
-            string bits = GenerateHashStream(hashFunction, requiredBits);
-
-            return MaurersUniversalTest(bits);
-        }
-
         public double MaurersUniversalTest(string bits)
         {
             int n = bits.Length;
+            if (n < 90_400)
+            {
+                return double.NaN;
+            }
 
             int L;
-            if (n >= 3878400) L = 15;
-            else if (n >= 1715000) L = 14;
-            else if (n >= 904960) L = 13;
-            else if (n >= 462400) L = 12;
-            else if (n >= 206848) L = 11;
-            else if (n >= 90400) L = 10;
-            else return 0.0;   // длина слишком мала
+            if (n >= 5_000_000)      // Увеличили порог для L=15
+                L = 15;
+            else if (n >= 3_878_400)
+                L = 14;               // Сдвинули пороги вниз, чтобы L=14 был доступнее
+            else if (n >= 2_000_000)
+                L = 13;
+            else if (n >= 1_000_000)
+                L = 12;
+            else if (n >= 500_000)
+                L = 11;
+            else if (n >= 200_000)
+                L = 10;
+            else
+            {
+                return double.NaN;
+            }
 
-            int Q = 10 * (1 << L);         // TRAINING
-            int K = (n / L) - Q;           // TEST BLOCKS
+            int Q = 10 * (1 << L);
+            int totalBlocks = n / L;
+            int K = totalBlocks - Q;
 
             if (K < 1000)
-                return 0.0;
+            {
+                return double.NaN;
+            }
 
             int Tsize = 1 << L;
             int[] table = new int[Tsize];
-
             int idx = 0;
 
+            // TRAINING phase
             for (int i = 0; i < Q; i++)
             {
+                if (idx + L > n) return double.NaN;
                 int pattern = Convert.ToInt32(bits.Substring(idx, L), 2);
                 table[pattern] = i + 1;
                 idx += L;
             }
 
-            // ==========================
-            // TEST
-            // ==========================
+            // TEST phase
             double sum = 0.0;
-
-            for (int i = Q; i < Q + K; i++)
+            int testBlocksProcessed = 0;
+            for (int i = Q; i < totalBlocks; i++)
             {
+                if (idx + L > n) break;
                 int pattern = Convert.ToInt32(bits.Substring(idx, L), 2);
-
                 int distance = (i + 1) - table[pattern];
 
                 if (distance <= 0)
-                    return 0.0;
+                {
+                    return double.NaN;
+                }
 
                 sum += Math.Log(distance, 2);
-
                 table[pattern] = i + 1;
                 idx += L;
+                testBlocksProcessed++;
             }
 
-            double fn = sum / K;
+            if (testBlocksProcessed == 0)
+                return double.NaN;
 
+            double fn = sum / testBlocksProcessed;
+
+            // Таблицы из NIST (L=6..15)
             double[] expected = {
                 0,0,0,0,0,0,
                 5.2177052, 6.1962507, 7.1836656, 8.1764248,
                 9.1723243,10.170032,11.168765,12.168070,
                13.167693,14.167488
             };
-
             double[] variance = {
                 0,0,0,0,0,0,
                 2.954, 3.125, 3.238, 3.311,
@@ -472,13 +478,10 @@ namespace The_complex_of_testing_hash_functions.Services
             double var = variance[L];
 
             double z = (fn - mu) / Math.Sqrt(var);
+            double pValue = Erfc(Math.Abs(z) / Math.Sqrt(2.0));
 
-            // p-value = erfc(|z|/√2)
-            double pValue = Erfc(Math.Abs(z) / Math.Sqrt(2));
-
-            return pValue;
+            return double.IsNaN(pValue) || !double.IsFinite(pValue) ? double.NaN : pValue;
         }
-
         #endregion
 
         #region Lempel Ziv Compression Test
@@ -490,44 +493,59 @@ namespace The_complex_of_testing_hash_functions.Services
                 return double.NaN;
 
             int c = CountLZ76Phrases(bits);
-            Console.WriteLine($"c={c}");
-            // NIST SP 800-22 constants (empirical)
-            const double mean = 69588.2019;
+
+            // NIST параметры для n ≈ 1–10 млн бит (примерные)
+            const double mean = 69588.2019;   // из NIST или калиброванные
             const double sigma = 73.23726011;
 
             double z = (c - mean) / sigma;
-            Console.WriteLine($"z={z}");
-            double pValue = Erfc(Math.Abs(z) / Math.Sqrt(2));
-            Console.WriteLine($"pValue={pValue}");
+
+            double pValue = Erfc(Math.Abs(z) / Math.Sqrt(2.0));
+
             return Math.Clamp(pValue, 0.0, 1.0);
         }
 
         private int CountLZ76Phrases(string bits)
         {
             int n = bits.Length;
-            int i = 0;
-            int c = 1;
+            if (n == 0) return 0;
 
-            var dictionary = new HashSet<string>();
-            dictionary.Add(bits[0].ToString());
+            // Словарь: индекс → длина фразы (или просто счётчик)
+            // Для бинарного алфавита используем Trie или HashSet с хэшом
+            var dictionary = new Dictionary<ulong, int>(); // hash → index фразы
+            int phrases = 0;
+            int pos = 0;
 
-            while (i + c < n)
+            // Начальный словарь пустой
+            while (pos < n)
             {
-                string phrase = bits.Substring(i, c);
+                ulong hash = 0;
+                int len = 0;
+                int matchIndex = -1;
 
-                if (dictionary.Contains(phrase))
+                // Ищем самую длинную совпадающую фразу
+                while (pos + len < n)
                 {
-                    c++;
+                    hash = (hash << 1) | (ulong)(bits[pos + len] - '0');
+                    if (!dictionary.TryGetValue(hash, out matchIndex))
+                        break;
+                    len++;
                 }
-                else
+
+                // Добавляем новую фразу: найденная + следующий символ (если есть)
+                if (pos + len < n)
                 {
-                    dictionary.Add(phrase);
-                    i += c;
-                    c = 1;
+                    hash = (hash << 1) | (ulong)(bits[pos + len] - '0');
                 }
+
+                phrases++;
+                dictionary[hash] = phrases;  // индекс новой фразы
+
+                // Двигаемся на длину найденной фразы + 1 (новый символ)
+                pos += len + 1;
             }
 
-            return dictionary.Count;
+            return phrases;
         }
 
         public class SuffixAutomaton
@@ -1108,7 +1126,7 @@ namespace The_complex_of_testing_hash_functions.Services
         }
 
         // Комплементарная функция ошибок (erfc)
-        private double Erfc(double x)
+        public double Erfc(double x)
         {
             if (double.IsNaN(x)) return double.NaN;
 

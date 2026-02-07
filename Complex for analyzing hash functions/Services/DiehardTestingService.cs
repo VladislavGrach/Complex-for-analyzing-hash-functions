@@ -10,42 +10,51 @@ namespace The_complex_of_testing_hash_functions.Services
     public class DiehardTestingService : NistTestingService, IDiehardTestingService
     {
         #region Birthday Spacings Test
-        //Тест дней рождения
         public double BirthdaySpacingsTest(string bits)
         {
-            int m = bits.Length / 24; // Берем 24-битные числа
-            if (m < 2) return -1;
+            const int WORD_BITS = 24;
+            const int M = 1 << WORD_BITS;
+            const int m = 512; // КЛЮЧЕВО!
 
-            List<int> birthdays = new();
+            if (bits.Length < m * WORD_BITS)
+                return double.NaN;
+
+            uint[] values = new uint[m];
 
             for (int i = 0; i < m; i++)
             {
-                int val = Convert.ToInt32(bits.Substring(i * 24, 24), 2);
-                birthdays.Add(val);
+                int pos = i * WORD_BITS;
+                values[i] = Convert.ToUInt32(bits.Substring(pos, WORD_BITS), 2);
             }
 
-            birthdays.Sort();
+            Array.Sort(values);
 
-            List<int> spacings = new();
-            for (int i = 1; i < birthdays.Count; i++)
-            {
-                spacings.Add(birthdays[i] - birthdays[i - 1]);
-            }
+            // spacings
+            int n = values.Length;
+            uint[] spacings = new uint[n];
 
-            // Количество совпадающих расстояний
-            var duplicates = spacings.GroupBy(x => x)
-                                     .Count(g => g.Count() > 1);
+            for (int i = 1; i < n; i++)
+                spacings[i - 1] = values[i] - values[i - 1];
 
-            // Ожидание по Пуассону для количества повторов:
-            // E = n^3 / (4 * m), где m — размер пространства
-            double n = m;
-            double spaceSize = Math.Pow(2, 24);
-            double expected = n * n * n / (4 * spaceSize);
-            double chiSquare = Math.Pow(duplicates - expected, 2) / expected;
+            spacings[n - 1] = (uint)(M - (values[n - 1] - values[0]));
 
-            int df = 1; // Степени свободы
-            return 1.0 - ChiSquaredCDF(chiSquare, df);
+            Array.Sort(spacings);
+
+            // считаем число совпадений spacings
+            int collisions = 0;
+            for (int i = 1; i < n; i++)
+                if (spacings[i] == spacings[i - 1])
+                    collisions++;
+
+            // параметр Пуассона
+            double lambda = (double)m * m * m / (4.0 * M);
+
+            // p-value: P(X ≥ collisions | Pois(lambda))
+            double pValue = 1.0 - PoissonCDF(collisions - 1, lambda);
+
+            return Math.Clamp(pValue, 0.0, 1.0);
         }
+
         #endregion
 
         #region Count Ones Test
@@ -88,68 +97,62 @@ namespace The_complex_of_testing_hash_functions.Services
 
         #region Ranks Of Matrices Test
         // Тест рангов матриц
-        public double RanksOfMatricesTest(string bits, Func<byte[], byte[]> hashFunction = null)
+        public double RanksOfMatricesTest(string streamBits)
         {
-            const int matrixSize = 32;
-            const int bitsPerMatrix = matrixSize * matrixSize; 
-            const int MIN_MATRICES = 200;                     
+            const int MATRIX_SIZE = 32;
+            const int BITS_PER_MATRIX = MATRIX_SIZE * MATRIX_SIZE;
+            const int MIN_MATRICES = 100;
 
-            // --- STEP 1. PAD IF NEEDED ---
-            int requiredBits = MIN_MATRICES * bitsPerMatrix;
+            if (string.IsNullOrEmpty(streamBits))
+                return double.NaN;
 
-            if (bits.Length < requiredBits)
-            {
-                if (hashFunction == null)
-                    throw new ArgumentException("Недостаточно бит и не передана hashFunction для padding.");
+            int numMatrices = streamBits.Length / BITS_PER_MATRIX;
+            if (numMatrices < MIN_MATRICES)
+                return double.NaN;
 
-                int missing = requiredBits - bits.Length;
-                string extra = GenerateHashStream(hashFunction, missing);
-                bits += extra;
-            }
-
-            int numMatrices = bits.Length / bitsPerMatrix;
-            if (numMatrices < 10) return -1; // минимальный порог
-
-            int rank32 = 0, rank31 = 0, rank30 = 0;
+            int rank32 = 0;
+            int rank31 = 0;
+            int rank30orLess = 0;
 
             int offset = 0;
 
             for (int m = 0; m < numMatrices; m++)
             {
-                int[,] A = new int[matrixSize, matrixSize];
+                int[,] matrix = new int[MATRIX_SIZE, MATRIX_SIZE];
 
-                for (int i = 0; i < matrixSize; i++)
+                for (int i = 0; i < MATRIX_SIZE; i++)
                 {
-                    for (int j = 0; j < matrixSize; j++)
+                    for (int j = 0; j < MATRIX_SIZE; j++)
                     {
-                        A[i, j] = bits[offset++] - '0';
+                        matrix[i, j] = streamBits[offset++] - '0';
                     }
                 }
 
-                int r = GF2Rank(A, matrixSize);
+                int rank = GF2Rank(matrix, MATRIX_SIZE);
 
-                if (r == 32) rank32++;
-                else if (r == 31) rank31++;
-                else rank30++;
+                if (rank == 32) rank32++;
+                else if (rank == 31) rank31++;
+                else rank30orLess++;
             }
 
-            double p32 = 0.2887880950866024;
-            double p31 = 0.5775761901732048;
-            double p30 = 0.13363571474019285;
+            // Теоретические вероятности (NIST / Diehard)
+            const double p32 = 0.2887880950866024;
+            const double p31 = 0.5775761901732048;
+            const double p30 = 0.13363571474019285;
 
             double e32 = numMatrices * p32;
             double e31 = numMatrices * p31;
             double e30 = numMatrices * p30;
 
             double chi2 =
-                (Math.Pow(rank32 - e32, 2) / e32) +
-                (Math.Pow(rank31 - e31, 2) / e31) +
-                (Math.Pow(rank30 - e30, 2) / e30);
+                Math.Pow(rank32 - e32, 2) / e32 +
+                Math.Pow(rank31 - e31, 2) / e31 +
+                Math.Pow(rank30orLess - e30, 2) / e30;
 
-            // df = 3 - 1 = 2 degrees of freedom
+            // df = 3 − 1 = 2
             double pValue = 1.0 - ChiSquaredCDF(chi2, 2);
 
-            return Math.Max(0.0, Math.Min(1.0, pValue));
+            return Math.Clamp(pValue, 0.0, 1.0);
         }
         #endregion
 
@@ -157,54 +160,54 @@ namespace The_complex_of_testing_hash_functions.Services
         // Тест на перестановки
         public double OverlappingPermutationsTest(string bits)
         {
-            if (bits.Length < 3) return -1;
+            const int m = 5;
+            int n = bits.Length;
 
-            Dictionary<string, int> frequencies = new();
-            for (int i = 0; i <= bits.Length - 3; i++) // Перекрывающиеся тройки
+            var seen = new HashSet<string>();
+            int pos = 0;
+            int uniqueCount = 0;
+
+            while (pos <= n - m)
             {
-                string triple = bits.Substring(i, 3);
-                if (!frequencies.ContainsKey(triple))
-                    frequencies[triple] = 0;
-                frequencies[triple]++;
+                string window = bits.Substring(pos, m);
+                if (seen.Add(window))
+                    uniqueCount++;
+                pos++; // перекрытие на 1 бит
             }
 
-            int total = bits.Length - 2;
-            double expected = (double)total / 8;
+            int maxPossible = 1 << m; // 32
 
-            double chiSquare = frequencies.Values.Sum(f => Math.Pow(f - expected, 2) / expected);
+            // Приближённое ожидаемое число уникальных
+            double expected = maxPossible * (1 - Math.Pow(1 - 1.0 / maxPossible, n - m + 1));
+            double variance = maxPossible * Math.Exp(-(n - m + 1) / (double)maxPossible) * (1 - Math.Exp(-(n - m + 1) / (double)maxPossible));
 
-            // df = 7, т.к. 8 троек - 1
-            return ChiSquaredCDF(chiSquare, 7);
+            double z = (uniqueCount - expected) / Math.Sqrt(variance + 1e-10);
+            double pValue = Erfc(Math.Abs(z) / Math.Sqrt(2.0));
+
+            return pValue;
         }
         #endregion
 
         #region Runs Test
         // Тест серийности
-        public double RunsTest(string bits, Func<byte[], byte[]> hashFunction = null)
+        public double RunsTest(string bits)
         {
-            const int BLOCK_SIZE = 20000;      // Размер блока Diehard
-            const int MIN_BLOCKS = 20;         // Минимум 20 блоков для устойчивой статистики
+            const int BLOCK_SIZE = 20000;
+            const int MIN_BLOCKS = 20;
             const int MIN_BITS = BLOCK_SIZE * MIN_BLOCKS;
 
-            // Если мало бит → добиваем криптографическим padding
-            if (bits.Length < MIN_BITS)
+            int n = bits.Length;
+            if (n < MIN_BITS)
             {
-                if (hashFunction == null)
-                    return -1;
-
-                int missing = MIN_BITS - bits.Length;
-                bits += GenerateHashStream(hashFunction, missing);
+                return double.NaN;
             }
 
-            int totalBits = bits.Length;
-            int numBlocks = totalBits / BLOCK_SIZE;
+            // Обрезаем до целого числа блоков
+            int numBlocks = n / BLOCK_SIZE;
+            if (numBlocks < MIN_BLOCKS)
+                return double.NaN;
 
-            if (numBlocks < 1)
-                return -1;
-
-            // Счётчики серий: длина 1..6 (6 = категория "6 и больше")
-            long[] runCount = new long[6];
-
+            long[] runCount = new long[6]; // 1..5, >=6
             int offset = 0;
 
             for (int b = 0; b < numBlocks; b++)
@@ -223,116 +226,127 @@ namespace The_complex_of_testing_hash_functions.Services
                     {
                         int idx = Math.Min(runLen, 6) - 1;
                         runCount[idx]++;
-
                         runLen = 1;
                         prev = cur;
                     }
                 }
 
-                // последний run в блоке
+                // Последний run в блоке
                 int lastIdx = Math.Min(runLen, 6) - 1;
                 runCount[lastIdx]++;
-
                 offset += BLOCK_SIZE;
             }
 
             long totalRuns = runCount.Sum();
+            if (totalRuns == 0) return double.NaN;
 
-            // Ожидаемые вероятности (из оригинального Diehard)
-            double[] p = {
-                0.5,        // длина 1
-                0.25,       // длина 2
-                0.125,      // 3
-                0.0625,     // 4
-                0.03125,    // 5
-                0.03125     // >= 6
+            // Точные вероятности для независимых битов p=0.5
+            double[] p = new double[6]
+            {
+                0.5,       // run=1
+                0.25,      // =2
+                0.125,     // =3
+                0.0625,    // =4
+                0.03125,   // =5
+                0.03125    // >=6
             };
 
-            // χ²
             double chi2 = 0.0;
-
             for (int i = 0; i < 6; i++)
             {
-                double expected = totalRuns * p[i];
-                double observed = runCount[i];
-
-                if (expected > 0)
-                    chi2 += (observed - expected) * (observed - expected) / expected;
+                double exp = totalRuns * p[i];
+                if (exp < 5.0)
+                {
+                    return double.NaN;
+                }
+                double obs = runCount[i];
+                chi2 += Math.Pow(obs - exp, 2) / exp;
             }
 
-            // Степени свободы: 6 категорий – 1 = 5
-            double pValue = 1.0 - ChiSquaredCDF(chi2, 5);
+            int df = 5;
+            double pValue = 1.0 - ChiSquaredCDF(chi2, df);
 
-            return Math.Max(0.0, Math.Min(1.0, pValue));
+            return Math.Clamp(pValue, 0.0, 1.0);
         }
-
         #endregion
 
         #region Gcd Test
-        public double GcdTest(string bits, Func<byte[], byte[]>? hashFunction = null, int requiredWordsDefault = 100_000)
+        // Diehard GCD Test (Marsaglia)
+        public double GcdTest(string streamBits)
         {
-            const double EXPECTED_COPRIME = 6.0 / (Math.PI * Math.PI); // ≈0.607927
+            const int WORD_SIZE = 32;
+            const int MIN_WORDS = 100_000;
+            const double EXPECTED = 6.0 / (Math.PI * Math.PI);
 
-            // если передали hashFunction и вход короткий — дополняем
-            if ((bits?.Length ?? 0) < 32 * requiredWordsDefault)
+            if (string.IsNullOrEmpty(streamBits))
             {
-                if (hashFunction == null)
-                    return -1.0; // недостаточно данных и нет способа pad'а
-
-                bits = GenerateHashStream(hashFunction, requiredWordsDefault * 32);
+                return double.NaN;
             }
 
-            if (string.IsNullOrEmpty(bits) || bits.Length < 64)
-                return -1.0;
+            int totalWords = streamBits.Length / WORD_SIZE;
+            if (totalWords < MIN_WORDS)
+            {
+                return double.NaN;
+            }
 
             long pairs = 0;
-            long coprimeCount = 0;
+            long coprime = 0;
 
-            // Проходим по словам подряд (в потоковом режиме, без лишнего аллока)
-            int pos = 0;
             uint prev = 0;
             bool havePrev = false;
 
-            while (pos + 32 <= bits.Length)
+            int pos = 0;
+            while (pos + WORD_SIZE <= streamBits.Length)
             {
-                uint w = Convert.ToUInt32(bits.Substring(pos, 32), 2);
-                pos += 32;
+                uint current = ReadUInt32FromBits(streamBits, pos);
+                pos += WORD_SIZE;
 
                 if (!havePrev)
                 {
-                    prev = w;
+                    prev = current;
                     havePrev = true;
                     continue;
                 }
 
                 pairs++;
-                if (Gcd32(prev, w) == 1U) coprimeCount++;
+                if (Gcd32(prev, current) == 1)
+                    coprime++;
 
-                prev = w;
+                prev = current;
             }
 
-            if (pairs == 0) return -1.0;
+            if (pairs == 0)
+            {
+                return double.NaN;
+            }
 
-            double pObs = coprimeCount / (double)pairs;
-            double expected = EXPECTED_COPRIME;
+            double pObs = coprime / (double)pairs;
 
-            // дисперсия для биномиального приближения
-            double var = expected * (1 - expected) / (double)pairs;
-            if (var <= 0 || double.IsNaN(var)) return 0.0;
+            double variance = EXPECTED * (1.0 - EXPECTED) / pairs;
+            if (variance <= 0 || double.IsNaN(variance))
+            {
+                return 0.0;
+            }
 
-            double z = (pObs - expected) / Math.Sqrt(var);
+            double z = (pObs - EXPECTED) / Math.Sqrt(variance);
+
             double pValue = 2.0 * (1.0 - NormalCDF(Math.Abs(z)));
+            return Math.Clamp(pValue, 0.0, 1.0);
+        }
 
-            // защита от числовых артефактов
-            if (double.IsNaN(pValue)) pValue = 0.0;
-            return Math.Max(0.0, Math.Min(1.0, pValue));
+
+        private static uint ReadUInt32FromBits(string bits, int offset)
+        {
+            uint value = 0;
+            for (int i = 0; i < 32; i++)
+            {
+                value = (value << 1) | (uint)(bits[offset + i] - '0');
+            }
+            return value;
         }
 
         private static uint Gcd32(uint a, uint b)
         {
-            // быстрый евклид для unsigned
-            if (a == 0) return b;
-            if (b == 0) return a;
             while (b != 0)
             {
                 uint t = a % b;
@@ -341,75 +355,89 @@ namespace The_complex_of_testing_hash_functions.Services
             }
             return a;
         }
-
         #endregion
 
         #region Squeeze Test
         public double SqueezeTest(string bits)
         {
-            const int N = 100_000;
-            const int K = 23;
-            const int MIN_BITS_REQUIRED = N * 6;
+            const int WORD_BITS = 32;
+            const double THRESHOLD = 1.0 / 4294967296.0; // 2^-32
+            const int TARGET_SAMPLES = 10_000;
+            const int MIN_SAMPLES = 1_000;
 
-            var values = new List<int>(N);
-            int bitPos = 0;
-
-            while (values.Count < N && bitPos + 6 <= bits.Length)
+            if (string.IsNullOrEmpty(bits) || bits.Length < WORD_BITS * 100_000)
             {
-                string chunk = bits.Substring(bitPos, 6);
-                int num = Convert.ToInt32(chunk, 2);
-                if (num < K)
-                    values.Add(num);
-                bitPos += 6;
+                return double.NaN;
             }
 
-            int actualN = values.Count;
-            int squeezeCount = 0;
-            long current = 1;
+            List<int> ks = new();
+            int pos = 0;
+            int nBits = bits.Length;
+            int maxK = 0;
 
-            foreach (int v in values)
+            while (ks.Count < TARGET_SAMPLES && pos + WORD_BITS <= nBits)
             {
-                if (v == 0)
-                    current = 1;
-                else
+                double S = 1.0;
+                int k = 0;
+
+                while (S > THRESHOLD && pos + WORD_BITS <= nBits)
                 {
-                    current *= v;
-                    if (current >= 8_388_608L)
+                    uint word = 0;
+                    for (int i = 0; i < WORD_BITS; i++)
                     {
-                        squeezeCount++;
-                        current = 1;
+                        if (bits[pos + i] == '1')
+                            word |= (1u << (WORD_BITS - 1 - i));
                     }
+                    pos += WORD_BITS;
+
+                    // Diehard-преобразование
+                    double U = (word + 1.0) / 4294967297.0; // 2^32 + 1
+
+                    S *= U;
+                    k++;
+
+                    if (k > 10_000) break; // защита
+                }
+
+                if (S <= THRESHOLD && k > 0)
+                {
+                    ks.Add(k);
+                    if (k > maxK) maxK = k;
                 }
             }
 
-            double expected = (double)actualN / K;
-            double variance = expected * (1.0 + 1.0 / K);
-            double z = (squeezeCount - expected) / Math.Sqrt(variance);
-            double pValue = 2.0 * (1.0 - NormalCDF(Math.Abs(z)));
+            if (ks.Count < MIN_SAMPLES)
+            {
+                return double.NaN;
+            }
 
-            return Math.Max(0.0, Math.Min(1.0, pValue));
+            // --- статистика Diehard ---
+            double mean = ks.Average();
+
+            double expected = WORD_BITS * Math.Log(2.0); // 32 * ln(2)
+            double variance = expected;
+
+            double z = (mean - expected) / Math.Sqrt(variance / ks.Count);
+            double pValue = Erfc(Math.Abs(z) / Math.Sqrt(2.0));
+
+            return Math.Clamp(pValue, 0.0, 1.0);
         }
+
         #endregion
 
         #region Craps Test
         public double CrapsTest(string bits)
         {
             const int GAMES = 200_000;
-            const int MIN_BITS_REQUIRED = 10_000_000; // большой запас
 
-            if (bits.Length < MIN_BITS_REQUIRED)
-            {
-                var sb = new StringBuilder(MIN_BITS_REQUIRED);
-                while (sb.Length < MIN_BITS_REQUIRED)
-                    sb.Append(bits);
-                bits = sb.ToString(0, MIN_BITS_REQUIRED);
-            }
+            int n = bits.Length;
 
             int bitPos = 0;
 
             int ReadBits(int count)
             {
-                if (bitPos + count > bits.Length) return 0;
+                if (bitPos + count > n)
+                    return -1; // сигнал конца
                 int v = 0;
                 for (int i = 0; i < count; i++)
                     v = (v << 1) | (bits[bitPos++] - '0');
@@ -418,83 +446,97 @@ namespace The_complex_of_testing_hash_functions.Services
 
             int GetDie()
             {
-                while (bitPos + 3 <= bits.Length)
+                while (bitPos + 3 <= n)
                 {
                     int v = ReadBits(3);
+                    if (v == -1) return -1;
                     if (v <= 5)
-                        return 1 + v;    // 1..6
-                                         // иначе — отбрасываем, но bitPos уже сдвинут — это нормально
+                        return 1 + v; // 1..6
+                                      // иначе отбрасываем (6 или 7)
                 }
-                return 4; // если кончились биты — нейтральное значение
+                return -1; // конец битов
             }
 
             int wins = 0;
+            int gamesPlayed = 0;
 
             for (int game = 0; game < GAMES; game++)
             {
                 int d1 = GetDie();
                 int d2 = GetDie();
+                if (d1 == -1 || d2 == -1) break;
+
                 int sum = d1 + d2;
+                gamesPlayed++;
 
                 if (sum == 7 || sum == 11)
                 {
                     wins++;
                     continue;
                 }
+
                 if (sum == 2 || sum == 3 || sum == 12)
-                {
                     continue; // проигрыш
-                }
 
                 int point = sum;
-                while (bitPos + 6 <= bits.Length)
+                bool resolved = false;
+
+                while (!resolved)
                 {
-                    sum = GetDie() + GetDie();
-                    if (sum == 7) break;
-                    if (sum == point)
+                    d1 = GetDie();
+                    d2 = GetDie();
+                    if (d1 == -1 || d2 == -1) break;
+
+                    sum = d1 + d2;
+                    if (sum == 7)
+                    {
+                        resolved = true; // проигрыш
+                    }
+                    else if (sum == point)
                     {
                         wins++;
-                        break;
+                        resolved = true;
                     }
                 }
             }
 
-            const double P = 244.0 / 495.0;
-            double expected = P * GAMES;
-            double variance = GAMES * P * (1 - P);
+            if (gamesPlayed < GAMES / 2)
+            {
+                return double.NaN;
+            }
+
+            const double P = 244.0 / 495.0; // ≈ 0.493939
+            double expected = P * gamesPlayed;
+            double variance = gamesPlayed * P * (1 - P);
+
             double z = (wins - expected) / Math.Sqrt(variance);
-            double pValue = 2 * (1 - NormalCDF(Math.Abs(z)));
+            double pValue = 2.0 * (1.0 - NormalCDF(Math.Abs(z)));
 
-            return pValue;
-        }
-
-        public double CrapsTestOnHashStream(
-            Func<byte[], byte[]> hashFunction,
-            int requiredBits = 1_500_000)
-        {
-            string bits = GenerateHashStream(hashFunction, requiredBits);
-            return CrapsTest(bits);
+            return Math.Clamp(pValue, 0.0, 1.0);
         }
         #endregion
 
         #region Auxiliary calculation
+        private double BinomialCoefficient(int n, int k)
+        {
+            if (k < 0 || k > n) return 0.0;
+            if (k == 0 || k == n) return 1.0;
+
+            k = Math.Min(k, n - k);
+
+            double result = 1.0;
+            for (int i = 1; i <= k; i++)
+            {
+                result *= (n - i + 1);
+                result /= i;
+            }
+
+            return result;
+        }
+
         private double BinomialProbability(int n, int k, double p)
         {
             return BinomialCoefficient(n, k) * Math.Pow(p, k) * Math.Pow(1 - p, n - k);
-        }
-
-        private double BinomialCoefficient(int n, int k)
-        {
-            if (k < 0 || k > n) return 0;
-            if (k == 0 || k == n) return 1;
-
-            double result = 1;
-            for (int i = 1; i <= k; i++)
-            {
-                result *= (n - (k - i));
-                result /= i;
-            }
-            return result;
         }
 
         private int GF2Rank(int[,] A, int N)
@@ -548,6 +590,25 @@ namespace The_complex_of_testing_hash_functions.Services
             }
 
             return rank;
+        }
+
+        private static double PoissonCDF(int k, double lambda)
+        {
+            if (k < 0)
+                return 0.0;
+
+            double sum = 0.0;
+            double term = Math.Exp(-lambda); // k = 0
+
+            sum = term;
+
+            for (int i = 1; i <= k; i++)
+            {
+                term *= lambda / i;
+                sum += term;
+            }
+
+            return sum;
         }
         #endregion
     }
