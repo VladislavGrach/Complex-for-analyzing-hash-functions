@@ -109,36 +109,16 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             double craps = _diehard.CrapsTest(streamBits);
 
 
-            // === TEST U01 ===
-            double collisionU01 = _testu01.CollisionTestOnHashStream(
-                input => hasher.ComputeHash(input, p.Rounds),
-                requiredBits: 1_500_000,
-                t: 20,
-                n: 500_000);
-
-            double gapU01 = _testu01.GapTestOnHashStream(
-                input => hasher.ComputeHash(input, p.Rounds));
-
-            double autoU01 = _testu01.AutocorrelationTestOnHashStream(
-                input => hasher.ComputeHash(input, p.Rounds));
-
-            double spectralU01 = _testu01.SpectralTestOnHashStream(
-                input => hasher.ComputeHash(input, p.Rounds));
-
-            double hammingU01 = _testu01.HammingWeightTestOnHashStream(
-                input => hasher.ComputeHash(input, p.Rounds));
-
-            double serialU01 = _testu01.SerialTestOnHashStream(
-                input => hasher.ComputeHash(input, p.Rounds));
-
-            double multinomialU01 = _testu01.MultinomialTestOnHashStream(
-                input => hasher.ComputeHash(input, p.Rounds));
-
-            double closePairsU01 = _testu01.ClosePairsTestOnHashStream(
-                input => hasher.ComputeHash(input, p.Rounds));
-
-            double couponU01 = _testu01.CouponCollectorTestOnHashStream(
-                input => hasher.ComputeHash(input, p.Rounds));
+            // === TESTU01 ===
+            double collisionU01 = _testu01.CollisionTest(streamBits);
+            double gapU01 = _testu01.GapTest(streamBits);
+            double autoU01 = _testu01.AutocorrelationTest(streamBits);
+            double spectralU01 = _testu01.SpectralTest(streamBits);
+            double hammingU01 = _testu01.HammingWeightTest(streamBits);
+            double serialU01 = _testu01.SerialTest(streamBits);
+            double multinomialU01 = _testu01.MultinomialTest(streamBits);
+            double closePairsU01 = _testu01.ClosePairsTest(streamBits);
+            double couponU01 = _testu01.CouponCollectorTest(streamBits);
 
             // ==== SAC & BIC ====
             var sac = _avalanche.ComputeSAC(
