@@ -90,8 +90,9 @@ namespace Complex_for_analyzing_hash_functions.Services
 
             // P-values
             double sigma = Math.Sqrt(0.25 / totalExperiments);
+
             double[] pvals = flipRates
-                .Select(r => Erfc(Math.Abs((r - 0.5) / sigma) / Math.Sqrt(2)))
+                .Select(r => Math.Clamp(Erfc(Math.Abs((r - 0.5) / sigma) / Math.Sqrt(2)), 0.0, 1.0))
                 .ToArray();
 
             double minP = pvals.Min();

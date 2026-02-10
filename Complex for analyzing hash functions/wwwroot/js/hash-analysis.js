@@ -234,7 +234,7 @@
                 },
                 scales: {
                     x: { title: { display: true, text: 'Число раундов' } },
-                    y: { min: yMin, max: yMax, title: { display: true, text: yLabel } }
+                    y: { min: yMin, max: yMax, title: { display: true, text: yLabel }, ticks: { stepSize: 0.2 } }
                 }
             }
         });
@@ -350,7 +350,7 @@
 
     const bic = series("BIC");
     drawChart("bicChart", "Bit Independence Criterion (BIC)", "Максимальная корреляция",
-        bic.mean, bic.upper, bic.lower, COLORS.BIC);
+        bic.mean, bic.upper, bic.lower, COLORS.BIC, -1.4, 2);
 
     const nistContainer = document.getElementById("nistCharts");
 

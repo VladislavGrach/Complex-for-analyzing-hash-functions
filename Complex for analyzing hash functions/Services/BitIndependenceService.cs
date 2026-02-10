@@ -103,6 +103,8 @@ namespace Complex_for_analyzing_hash_functions.Services
             {
                 for (int j = 0; j < outputBits; j++)
                 {
+                    if (i == j) continue;   // исключаем диагональ
+
                     double v = correlationSum[i, j];
 
                     sum += v;
@@ -110,10 +112,12 @@ namespace Complex_for_analyzing_hash_functions.Services
 
                     double abs = Math.Abs(v);
                     if (abs > maxAbs) maxAbs = abs;
-
                     if (v < minCorr) minCorr = v;
+
+                    total++;
                 }
             }
+
 
             double mean = sum / total;
             double std = Math.Sqrt(Math.Max(0.0, sumSq / total - mean * mean));
