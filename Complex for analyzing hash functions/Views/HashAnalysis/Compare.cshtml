@@ -2,155 +2,156 @@
 
 @{
     ViewData["Title"] = "Сравнение алгоритмов";
+    Layout = "_Layout";
 
     var suite = (ViewBag.Suite as string ?? "diff").Trim();
     var metric = (ViewBag.Metric as string ?? "SAC").Trim();
     var rounds = ViewBag.Rounds ?? 1;
 }
 
-<h2 class="fw-semibold mb-3">Сравнение хэш-функций</h2>
+<!-- Подключение шрифта Inter -->
+<link rel="stylesheet" href="~/css/compare-style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
 
-<p class="text-muted">
-    Фиксируется число раундов, после чего производится сравнительный анализ
-    различных алгоритмов по выбранной статистической метрике.
-</p>
 
-<form method="get" id="compareForm" class="mb-4">
+<div class="container py-4">
+    <!-- Заголовок -->
+    <h2>Сравнение хэш-функций</h2>
+    <p class="subtitle">
+        Анализ статистических свойств алгоритмов хэширования
+    </p>
 
-    <!-- ===== ЧИСЛО РАУНДОВ ===== -->
-    <div class="row g-3 align-items-end">
-        <div class="col-auto">
-            <label class="form-label" for="roundsInput">Число раундов</label>
-            <input type="number"
-                   name="rounds"
-                   value="@rounds"
-                   class="form-control"
-                   min="1"
-                   id="roundsInput" />
+    <!-- Основная форма -->
+    <form method="get" id="compareForm" class="mb-4">
+        <!-- Верхняя панель: раунды + группы тестов -->
+        <div class="control-panel">
+            <!-- Число раундов -->
+            <div class="rounds-box">
+                <label class="form-label" for="roundsInput">Число раундов</label>
+
+                <select name="rounds"
+                        id="roundsInput"
+                        class="form-select"
+                        style="max-width: 140px;">
+                    @foreach (var r in (List<int>)ViewBag.AvailableRounds)
+                    {
+                        <option value="@r" selected="@(r == (int)ViewBag.Rounds ? "selected" : null)">
+                            @r
+                        </option>
+                    }
+                </select>
+
+            </div>
+
+            <!-- Группа тестов -->
+            <div>
+                <label class="form-label mb-1">Группа тестов</label>
+                <div class="d-flex flex-wrap gap-2">
+                    <div class="form-check">
+                        <input class="form-check-input"
+                               type="radio"
+                               name="suite"
+                               id="suite-diff"
+                               value="diff"
+                        @(suite == "diff" ? "checked" : null) />
+                        <label class="form-check-label" for="suite-diff">SAC / BIC</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input"
+                               type="radio"
+                               name="suite"
+                               id="suite-nist"
+                               value="nist"
+                        @(suite == "nist" ? "checked" : null) />
+                        <label class="form-check-label" for="suite-nist">NIST</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input"
+                               type="radio"
+                               name="suite"
+                               id="suite-diehard"
+                               value="diehard"
+                        @(suite == "diehard" ? "checked" : null) />
+                        <label class="form-check-label" for="suite-diehard">Diehard</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input"
+                               type="radio"
+                               name="suite"
+                               id="suite-testu01"
+                               value="testu01"
+                        @(suite == "testu01" ? "checked" : null) />
+                        <label class="form-check-label" for="suite-testu01">TestU01</label>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <!-- ===== ГРУППА ТЕСТОВ ===== -->
-    <div class="mt-4">
-        <label class="form-label fw-semibold">Группа тестов:</label><br />
-
-        <div class="form-check form-check-inline">
-            <input class="form-check-input"
-                   type="radio"
-                   name="suite"
-                   id="suite-diff"
-                   value="diff"
-            @(suite == "diff" ? "checked" : null) />
-            <label class="form-check-label" for="suite-diff">SAC / BIC</label>
+        <!-- Выбор теста -->
+        <div class="metrics-panel">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-3 col-lg-2">
+                    <label class="form-label mb-0" for="metricSelect">Статистический тест</label>
+                </div>
+                <div class="col-md-6 col-lg-7">
+                    <select name="metric"
+                            id="metricSelect"
+                            class="form-select">
+                        <!-- Заполняется динамически из hash-compare.js -->
+                    </select>
+                </div>
+                <div class="col-md-3 col-lg-3 text-muted text-md-end">
+                    <small>p-value / значение</small>
+                </div>
+            </div>
         </div>
+    </form>
 
-        <div class="form-check form-check-inline">
-            <input class="form-check-input"
-                   type="radio"
-                   name="suite"
-                   id="suite-nist"
-                   value="nist"
-            @(suite == "nist" ? "checked" : null) />
-            <label class="form-check-label" for="suite-nist">NIST</label>
-        </div>
+    <!-- Карточка с графиком -->
+    <div class="card">
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="compareChart" style="width: 100%; height: 100%; min-height: 320px;"></canvas>
+            </div>
 
-        <div class="form-check form-check-inline">
-            <input class="form-check-input"
-                   type="radio"
-                   name="suite"
-                   id="suite-diehard"
-                   value="diehard"
-            @(suite == "diehard" ? "checked" : null) />
-            <label class="form-check-label" for="suite-diehard">Diehard</label>
-        </div>
-
-        <div class="form-check form-check-inline">
-            <input class="form-check-input"
-                   type="radio"
-                   name="suite"
-                   id="suite-testu01"
-                   value="testu01"
-            @(suite == "testu01" ? "checked" : null) />
-            <label class="form-check-label" for="suite-testu01">TestU01</label>
-        </div>
-    </div>
-
-
-    <!-- ===== ВЫБОР ТЕСТА ===== -->
-    <div class="mt-3">
-        <label class="form-label fw-semibold" for="metricSelect">
-            Статистический тест:
-        </label>
-
-        <select name="metric"
-                id="metricSelect"
-                class="form-select"
-                style="max-width: 420px;">
-            <!-- заполняется JS -->
-        </select>
-    </div>
-</form>
-
-<!-- ===== ГРАФИК ===== -->
-<div class="card shadow-sm">
-    <div class="card-body">
-        <canvas id="compareChart" height="120"></canvas>
-
-        <div class="mt-3 d-flex gap-2">
-            <button id="exportCsvBtn"
-                    type="button"
-                    class="btn btn-outline-secondary btn-sm">
-                Экспорт CSV
-            </button>
-
-            <button id="exportJsonBtn"
-                    type="button"
-                    class="btn btn-outline-secondary btn-sm">
-                Экспорт JSON
-            </button>
+            <!-- Кнопки экспорта -->
+            <div class="btn-group-custom">
+                <button id="exportCsvBtn"
+                        type="button"
+                        class="btn btn-outline-secondary">
+                    Экспорт CSV
+                </button>
+                <button id="exportJsonBtn"
+                        type="button"
+                        class="btn btn-outline-secondary">
+                    Экспорт JSON
+                </button>
+                <button id="exportPngBtn"
+                        type="button"
+                        class="btn btn-outline-secondary">
+                    Экспорт PNG
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- ===== ДАННЫЕ ИЗ СЕРВЕРА ===== -->
+    <!-- Передача данных из сервера в глобальные переменные -->
     <script>
-        const algorithms = @Html.Raw(
-        System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.Algorithm))
-    );
+        // Данные для графика (начальная загрузка)
+        window.initialAlgorithms = @Html.Raw(Json.Serialize(Model.Select(m => m.Algorithm)));
+        window.initialMean = @Html.Raw(Json.Serialize(Model.Select(m => m.Mean)));
 
-        const mean = @Html.Raw(
-        System.Text.Json.JsonSerializer.Serialize(Model.Select(m => m.Mean))
-    );
-
-        const currentSuite  = "@suite";
-        const currentMetric = "@metric";
+        // Текущие параметры из URL/ViewBag
+        window.currentSuite = "@suite";
+        window.currentMetric = "@metric";
     </script>
 
-    <!-- ===== ОСНОВНАЯ ЛОГИКА ===== -->
+    <!-- Подключение основного JS-файла с логикой -->
     <script src="~/js/hash-compare.js"></script>
-
-    <!-- ===== UI-ЛОГИКА ФОРМЫ ===== -->
-    <script>
-        const form = document.getElementById("compareForm");
-        const roundsInput = document.getElementById("roundsInput");
-        const metricSelect = document.getElementById("metricSelect");
-
-        // авто-submit при смене suite
-        document.querySelectorAll("input[name=suite]")
-            .forEach(r => r.addEventListener("change", () => form.submit()));
-
-        // авто-submit при смене теста
-        // metricSelect.addEventListener("change", () => form.submit());
-
-        // debounce для rounds
-        let roundsTimer = null;
-        roundsInput.addEventListener("input", () => {
-            clearTimeout(roundsTimer);
-            roundsTimer = setTimeout(() => form.submit(), 500);
-        });
-    </script>
 }

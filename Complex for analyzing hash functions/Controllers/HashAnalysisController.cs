@@ -283,6 +283,16 @@ namespace Complex_for_analyzing_hash_functions.Controllers
 
             var algorithms = new[] { "Keccak", "Blake", "Blake2s", "Blake2b", "Blake3" };
 
+            // получаем список доступных раундов
+            var availableRounds = _db.HashTestResults
+                .Select(r => r.Rounds)
+                .Distinct()
+                .OrderBy(r => r)
+                .ToList();
+
+            if (!availableRounds.Contains(rounds) && availableRounds.Any())
+                rounds = availableRounds.First();
+
             var raw = _db.HashTestResults
                 .Where(r =>
                     r.Rounds == rounds &&
@@ -364,6 +374,7 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                 .ToList();
 
             ViewBag.Rounds = rounds;
+            ViewBag.AvailableRounds = availableRounds;
             ViewBag.Suite = suite;
             ViewBag.Metric = metric;
 

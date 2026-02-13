@@ -2,7 +2,9 @@
     const canvas = document.getElementById("compareChart");
     if (!canvas) return;
 
-    if (typeof algorithms === "undefined" || typeof mean === "undefined") return;
+    // Получаем данные из глобальных переменных, установленных в представлении
+    const algorithms = window.initialAlgorithms || [];
+    const mean = window.initialMean || [];
 
     let chart = null;
 
@@ -78,7 +80,6 @@
     const metricSelect = document.getElementById("metricSelect");
     if (!metricSelect) return;
 
-    // rounds нужен для fetch
     const roundsInput = document.getElementById("roundsInput");
 
     // ---------- helpers ----------
@@ -91,7 +92,7 @@
         window.location.href = `${window.location.pathname}?${params.toString()}`;
     }
 
-    // Новый способ: меняем URL без reload
+    // Меняем URL без reload
     function replaceUrlNoReload(params) {
         const url = new URL(window.location.href);
         url.search = params.toString();
@@ -117,9 +118,12 @@
         let m = params.get("metric") || DEFAULT_METRIC[s];
         if (!TEST_SUITES[s].tests[m]) m = DEFAULT_METRIC[s];
 
-        // если URL “грязный” — исправим
+        // если URL "грязный" — исправим
         let changed = false;
-        if ((params.get("suite") || "").toLowerCase() !== s) { params.set("suite", s); changed = true; }
+        if ((params.get("suite") || "").toLowerCase() !== s) {
+            params.set("suite", s);
+            changed = true;
+        }
 
         if (params.get("metric") !== m) {
             params.delete("metric");
@@ -149,7 +153,11 @@
             metricSelect.appendChild(opt);
         }
 
-        metricSelect.value = metric;
+        if (metric && TEST_SUITES[suite].tests[metric]) {
+            metricSelect.value = metric;
+        } else {
+            metricSelect.value = DEFAULT_METRIC[suite];
+        }
     }
 
     function drawChart(suite, metric) {
@@ -157,11 +165,29 @@
         const testCfg = suiteCfg.tests[metric];
         if (!testCfg) return;
 
+        // Если график уже существует - обновляем его данные
         if (chart) {
-            chart.destroy(); // обязателен перед переиспользованием canvas
-            chart = null;
+            // Обновляем данные
+            chart.data.labels = algorithmsData;
+            chart.data.datasets[0].data = meanData;
+            chart.data.datasets[0].backgroundColor = meanData.map(v =>
+                testCfg.isPValue && v < 0.01 ? "#d62728" : "#1f77b4"
+            );
+
+            // Обновляем заголовок и подписи осей
+            chart.options.plugins.title.text = `Сравнение алгоритмов — ${suiteCfg.label}: ${testCfg.title}`;
+            chart.options.scales.y.title.text = testCfg.isPValue ? "p-value" : testCfg.yLabel;
+
+            // Важно! Принудительно сбрасываем мин/макс для пересчета
+            chart.options.scales.y.min = 0;
+            chart.options.scales.y.max = 1;
+
+            // Обновляем график
+            chart.update();
+            return;
         }
 
+        // Создаем новый график только если его еще нет
         const colors = meanData.map(v =>
             testCfg.isPValue && v < 0.01 ? "#d62728" : "#1f77b4"
         );
@@ -173,15 +199,20 @@
                 datasets: [{
                     label: "Среднее значение",
                     data: meanData,
-                    backgroundColor: colors
+                    backgroundColor: colors,
+                    borderRadius: 6,
+                    barPercentage: 0.7
                 }]
             },
             options: {
+                responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
                     title: {
                         display: true,
-                        text: `Сравнение алгоритмов — ${suiteCfg.label}: ${testCfg.title}`
+                        text: `Сравнение алгоритмов — ${suiteCfg.label}: ${testCfg.title}`,
+                        font: { size: 14, weight: '500' }
                     },
                     tooltip: {
                         displayColors: false,
@@ -198,26 +229,41 @@
                 scales: {
                     y: {
                         beginAtZero: true,
-
-                        // И SAC, и p-value в диапазоне 0..1
                         min: 0,
                         max: 1,
-
                         ticks: {
                             stepSize: 0.1,
-                            callback: (v) => Number(v).toFixed(1).replace(".", ",")
+                            callback: (v) => Number(v).toFixed(1)
                         },
-
-                        title: { display: true, text: testCfg.isPValue ? "p-value" : testCfg.yLabel }
+                        title: {
+                            display: true,
+                            text: testCfg.isPValue ? "p-value" : testCfg.yLabel
+                        },
+                        // Принудительно пересчитываем границы при каждом рендере
+                        afterDataLimits: (axis) => {
+                            axis.min = 0;
+                            axis.max = 1;
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            rotation: 0,
+                            maxRotation: 0,
+                            minRotation: 0,
+                            autoSkip: false,
+                            align: "center",
+                            font: { size: 11 }
+                        }
                     }
-                }
-            }
+                },
+                animation: true
+            },
+            devicePixelRatio: 2
         });
     }
 
-    // Загрузка данных без перезагрузки ---
+    // Загрузка данных без перезагрузки
     async function fetchCompareData(suite, metric, rounds) {
-        // Поменяй путь, если у тебя другой action/route
         const url = new URL("/HashAnalysis/CompareData", window.location.origin);
         url.searchParams.set("suite", suite);
         url.searchParams.set("metric", metric);
@@ -225,7 +271,6 @@
 
         const resp = await fetch(url, { headers: { "Accept": "application/json" } });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
         return await resp.json();
     }
 
@@ -235,20 +280,13 @@
 
         const params = getParams();
         params.set("suite", s);
-
-        // при смене suite — ДА, перегружаем (как у тебя)
         params.delete("metric");
         params.set("metric", m);
 
         replaceUrlReload(params);
-
-        // ниже строки фактически не успеют отработать из-за reload, но оставим
-        syncSuiteRadios(s);
-        fillMetricSelect(s, m);
-        drawChart(s, m);
     }
 
-    // ИЗМЕНЕНО: теперь без reload, с fetch + redraw
+    // Асинхронная смена метрики без перезагрузки
     async function setMetric(newMetric) {
         const s = getCheckedSuite();
         const m = newMetric;
@@ -264,11 +302,13 @@
         // URL обновляем без перезагрузки
         replaceUrlNoReload(params);
 
-        // Подтянем новые значения и перерисуем график
+        // Показываем индикатор загрузки
+        metricSelect.style.opacity = "0.6";
+        metricSelect.disabled = true;
+
         try {
             const data = await fetchCompareData(s, m, getRounds());
 
-            // ожидаем { algorithms: [...], mean: [...] }
             if (data?.algorithms && data?.mean) {
                 algorithmsData = data.algorithms;
                 meanData = data.mean;
@@ -277,9 +317,11 @@
             fillMetricSelect(s, m);
             drawChart(s, m);
         } catch (e) {
-            console.error(e);
-            // если запрос упал — хотя бы оставим выбранное в селекте
+            console.error("Ошибка загрузки данных:", e);
             fillMetricSelect(s, m);
+        } finally {
+            metricSelect.style.opacity = "1";
+            metricSelect.disabled = false;
         }
     }
 
@@ -291,7 +333,6 @@
 
     // ---------- listeners ----------
     metricSelect.addEventListener("change", () => {
-        // важно: async, без submit/reload
         setMetric(metricSelect.value);
     });
 
@@ -299,5 +340,77 @@
         radio.addEventListener("change", (e) => {
             setSuite(e.target.value);
         });
+    });
+
+    if (roundsInput) {
+        roundsInput.addEventListener("change", () => {
+            const params = getParams();
+            params.set("rounds", roundsInput.value);
+            replaceUrlReload(params);
+        });
+    }
+
+    // Обработчики для кнопок экспорта
+    document.getElementById("exportCsvBtn")?.addEventListener("click", () => {
+        // Формируем CSV
+        let csv = "Алгоритм,Значение\n";
+        for (let i = 0; i < algorithmsData.length; i++) {
+            csv += `${algorithmsData[i]},${meanData[i]}\n`;
+        }
+
+        // Скачиваем файл
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `compare_${getCheckedSuite()}_${metricSelect.value}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    document.getElementById("exportJsonBtn")?.addEventListener("click", () => {
+        // Формируем JSON
+        const data = {
+            suite: getCheckedSuite(),
+            metric: metricSelect.value,
+            rounds: getRounds(),
+            algorithms: algorithmsData,
+            values: meanData
+        };
+
+        // Скачиваем файл
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `compare_${getCheckedSuite()}_${metricSelect.value}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    document.getElementById("exportPngBtn")?.addEventListener("click", () => {
+        if (!chart) return;
+
+        const canvas = chart.canvas;
+        const ctx = canvas.getContext("2d");
+
+        // Сохраняем текущее состояние
+        ctx.save();
+
+        // Рисуем белый фон ПОД графиком
+        ctx.globalCompositeOperation = "destination-over";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Получаем изображение
+        const url = canvas.toDataURL("image/png");
+
+        // Восстанавливаем состояние
+        ctx.restore();
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `compare_${getCheckedSuite()}_${metricSelect.value}.png`;
+        a.click();
     });
 });
