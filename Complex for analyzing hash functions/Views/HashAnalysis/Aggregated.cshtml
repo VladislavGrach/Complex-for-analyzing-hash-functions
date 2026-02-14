@@ -2,101 +2,110 @@
 
 @{
     ViewData["Title"] = "Анализ по раундам";
+    Layout = "_Layout";
+    
     var suite = ViewBag.Suite as string ?? "diff";
+    var algorithm = ViewBag.Algorithm as string ?? "Keccak";
 }
 
-<div class="mb-4">
-    <h2 class="fw-semibold">Анализ свойств хэш-функции по числу раундов</h2>
+<!-- Подключение шрифта Inter и стилей -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="~/css/compare-style.css">
 
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <form method="get" id="algorithmForm" class="row g-2 align-items-center">
-            <input type="hidden" name="suite" id="suiteHidden" value="" />
+<div class="container py-4">
+    <!-- Заголовок -->
+    <h2>Анализ по раундам</h2>
+    <p class="subtitle">
+        Исследование статистических свойств хэш-функции в зависимости от числа раундов
+    </p>
 
-            <div class="col-auto">
-                <label class="col-form-label">Алгоритм:</label>
-            </div>
-
-            <div class="col-auto">
-                <select name="algorithm" class="form-select" onchange="this.form.submit()">
-                    <!option value="Keccak"  @(ViewBag.Algorithm == "Keccak" ? "selected" : null)>Keccak</!option>
-                    <!option value="Blake"   @(ViewBag.Algorithm == "Blake" ? "selected" : null)>BLAKE-256</!option>
-                    <!option value="Blake2s" @(ViewBag.Algorithm == "Blake2s" ? "selected" : null)>BLAKE2s</!option>
-                    <!option value="Blake2b" @(ViewBag.Algorithm == "Blake2b" ? "selected" : null)>BLAKE2b</!option>
-                    <!option value="Blake3"  @(ViewBag.Algorithm == "Blake3" ? "selected" : null)>BLAKE3</!option>
+    <!-- Панель управления -->
+    <div class="control-panel">
+        <!-- Выбор алгоритма -->
+        <div>
+            <label class="form-label mb-1">Алгоритм</label>
+            <div class="d-flex align-items-center gap-2">
+                <select name="algorithm" id="algorithmSelect" class="form-select" style="min-width: 160px;">
+                    <!option value="Keccak" @(algorithm == "Keccak" ? "selected" : null)>Keccak</!option>
+                    <!option value="Blake" @(algorithm == "Blake" ? "selected" : null)>BLAKE-256</!option>
+                    <!option value="Blake2s" @(algorithm == "Blake2s" ? "selected" : null)>BLAKE2s</!option>
+                    <!option value="Blake2b" @(algorithm == "Blake2b" ? "selected" : null)>BLAKE2b</!option>
+                    <!option value="Blake3" @(algorithm == "Blake3" ? "selected" : null)>BLAKE3</!option>
                 </select>
             </div>
-        </form>
-
-    </div>
-</div>
-
-<!-- ===== ВКЛАДКИ ===== -->
-<div class="mb-4">
-    <label class="form-label fw-semibold">Группа тестов:</label><br />
-
-    <div class="form-check form-check-inline">
-        <input class="form-check-input" type="radio" name="suiteRadio" id="suite-diff" value="diff"
-        @((string.IsNullOrWhiteSpace(Context.Request.Query["suite"]) || Context.Request.Query["suite"] == "diff")
-            ? "checked" : null)>
-        <label class="form-check-label" for="suite-diff">SAC / BIC</label>
-    </div>
-
-    <div class="form-check form-check-inline">
-        <input class="form-check-input" type="radio" name="suiteRadio" id="suite-nist" value="nist"
-        @(Context.Request.Query["suite"] == "nist" ? "checked" : null)>
-        <label class="form-check-label" for="suite-nist">NIST</label>
-    </div>
-
-    <div class="form-check form-check-inline">
-        <input class="form-check-input" type="radio" name="suiteRadio" id="suite-diehard" value="diehard"
-        @(Context.Request.Query["suite"] == "diehard" ? "checked" : null)>
-        <label class="form-check-label" for="suite-diehard">Diehard</label>
-    </div>
-
-    <div class="form-check form-check-inline">
-        <input class="form-check-input" type="radio" name="suiteRadio" id="suite-testu01" value="testu01"
-        @(Context.Request.Query["suite"] == "testu01" ? "checked" : null)>
-        <label class="form-check-label" for="suite-testu01">TestU01</label>
-    </div>
-</div>
-
-
-<!-- ===== SAC + BIC ===== -->
-<div class="suite-group" data-suite="diff">
-    <div class="row g-4">
-        <div class="col-lg-6">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">Avalanche Effect</h5>
-                    <canvas id="sacChart" height="140"></canvas>
-                </div>
-            </div>
         </div>
 
-        <div class="col-lg-6">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">Bit Independence Criterion</h5>
-                    <canvas id="bicChart" height="140"></canvas>
+        <!-- Группа тестов -->
+        <div>
+            <label class="form-label mb-1">Группа тестов</label>
+            <div class="d-flex flex-wrap gap-2">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="suiteRadio" id="suite-diff" value="diff"
+                           @(suite == "diff" ? "checked" : null)>
+                    <label class="form-check-label" for="suite-diff">SAC / BIC</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="suiteRadio" id="suite-nist" value="nist"
+                           @(suite == "nist" ? "checked" : null)>
+                    <label class="form-check-label" for="suite-nist">NIST</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="suiteRadio" id="suite-diehard" value="diehard"
+                           @(suite == "diehard" ? "checked" : null)>
+                    <label class="form-check-label" for="suite-diehard">Diehard</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="suiteRadio" id="suite-testu01" value="testu01"
+                           @(suite == "testu01" ? "checked" : null)>
+                    <label class="form-check-label" for="suite-testu01">TestU01</label>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- ===== NIST ===== -->
-<div class="suite-group d-none" data-suite="nist">
-    <div class="row g-4" id="nistCharts"></div>
-</div>
+    <!-- ===== SAC + BIC ===== -->
+    <div class="suite-group" data-suite="diff" style="@(suite != "diff" ? "display: none;" : "")">
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Strict Avalanche Criterion (SAC)</h5>
+                        <div class="chart-container">
+                            <canvas id="sacChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-<!-- ===== Diehard ===== -->
-<div class="suite-group d-none" data-suite="diehard">
-    <div class="row g-4" id="diehardCharts"></div>
-</div>
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Bit Independence Criterion (BIC)</h5>
+                        <div class="chart-container">
+                            <canvas id="bicChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<!-- ===== TestU01 ===== -->
-<div class="suite-group d-none" data-suite="testu01">
-    <div class="row g-4" id="testu01Charts"></div>
+    <!-- ===== NIST ===== -->
+    <div class="suite-group" data-suite="nist" style="@(suite != "nist" ? "display: none;" : "")">
+        <div class="row g-4" id="nistCharts"></div>
+    </div>
+
+    <!-- ===== Diehard ===== -->
+    <div class="suite-group" data-suite="diehard" style="@(suite != "diehard" ? "display: none;" : "")">
+        <div class="row g-4" id="diehardCharts"></div>
+    </div>
+
+    <!-- ===== TestU01 ===== -->
+    <div class="suite-group" data-suite="testu01" style="@(suite != "testu01" ? "display: none;" : "")">
+        <div class="row g-4" id="testu01Charts"></div>
+    </div>
 </div>
 
 @section Scripts {
@@ -107,6 +116,8 @@
             rounds: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.Rounds))),
             metrics: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.Metrics)))
         };
+        window.currentSuite = "@suite";
+        window.currentAlgorithm = "@algorithm";
     </script>
 
     <script src="~/js/hash-analysis.js"></script>

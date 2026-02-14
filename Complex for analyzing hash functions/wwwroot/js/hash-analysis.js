@@ -1,35 +1,33 @@
 ﻿document.addEventListener("DOMContentLoaded", function () {
-
     const data = window.hashAnalysisData;
     if (!data || !data.rounds || !data.metrics) return;
 
     const rounds = data.rounds;
-    const metricsArr = data.metrics; // массив объектов: { "SAC": {Mean,Ci,...}, "BIC": {...}, ... }
+    const metricsArr = data.metrics; // массив объектов: { "SAC": {Mean, Ci?, Upper?, Lower?, ...}, "BIC": {...}, ... }
 
+    // 1. Функция извлечения серии (mean + границы)
     function series(name) {
         const mean = metricsArr.map(m => (m && m[name] ? m[name].Mean : null));
 
-        // Новый правильный путь: сервер отдал готовые границы
+        // Предпочитаем серверные Upper/Lower, если они есть
         const upperFromServer = metricsArr.map(m => (m && m[name] ? (m[name].Upper ?? null) : null));
         const lowerFromServer = metricsArr.map(m => (m && m[name] ? (m[name].Lower ?? null) : null));
 
-        const hasBounds = upperFromServer.some(v => v != null) && lowerFromServer.some(v => v != null);
+        const hasBounds = upperFromServer.some(v => v !== null) && lowerFromServer.some(v => v !== null);
 
         if (hasBounds) {
             return { mean, upper: upperFromServer, lower: lowerFromServer };
         }
 
-        // Старый путь (fallback): mean ± Ci
+        // Fallback: mean ± Ci
         const ci = metricsArr.map(m => (m && m[name] ? (m[name].Ci ?? 0) : 0));
-
-        const upper = mean.map((v, i) => (v == null ? null : v + (ci[i] ?? 0)));
-        const lower = mean.map((v, i) => (v == null ? null : v - (ci[i] ?? 0)));
+        const upper = mean.map((v, i) => (v == null ? null : v + ci[i]));
+        const lower = mean.map((v, i) => (v == null ? null : v - ci[i]));
 
         return { mean, upper, lower };
     }
 
-
-    // ===== плагины =====
+    // 2. Плагины Chart.js
     const whiteBackgroundPlugin = {
         id: 'whiteBackground',
         beforeDraw: (chart) => {
@@ -59,13 +57,7 @@
                 return;
             }
 
-            const points = chart.getElementsAtEventForMode(
-                e,
-                'index',
-                { intersect: false },
-                false
-            );
-
+            const points = chart.getElementsAtEventForMode(e, 'index', { intersect: false }, false);
             if (!points || points.length === 0) {
                 chart.setActiveElements([]);
                 chart.tooltip.setActiveElements([], { x: 0, y: 0 });
@@ -75,14 +67,14 @@
 
             const index = points[0].index;
             const active = [{ datasetIndex: 2, index }];
-
             chart.setActiveElements(active);
             chart.tooltip.setActiveElements(active, e);
             chart.draw();
         }
     };
 
-    function drawChart(id, title, yLabel, mean, upper, lower, color, yMin = null, yMax = null) {
+    // 3. Универсальная функция отрисовки графика + кнопки экспорта
+    function drawChart(id, title, yLabel, mean, upper, lower, color, yMin = null, yMax = null, testKey = null) {
         const canvas = document.getElementById(id);
         if (!canvas) return;
 
@@ -144,7 +136,6 @@
                             pointStyleWidth: 12,
                             generateLabels: function (chart) {
                                 const labels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
-
                                 for (const l of labels) {
                                     if (l.datasetIndex === 2) {
                                         const ds = chart.data.datasets[2];
@@ -171,43 +162,33 @@
                             title: function (items) {
                                 const chart = items[0]?.chart;
                                 if (!chart) return null;
-
                                 const meanVisible = chart.isDatasetVisible(2);
                                 const ciVisible = chart.isDatasetVisible(1);
                                 if (!meanVisible && !ciVisible) return null;
-
                                 return `Количество раундов: ${items[0].label}`;
                             },
                             beforeBody: function (items) {
                                 const chart = items[0]?.chart;
                                 if (!chart) return [];
-
                                 const meanVisible = chart.isDatasetVisible(2);
                                 const ciVisible = chart.isDatasetVisible(1);
                                 if (!meanVisible && !ciVisible) return [];
-
                                 const i = items[0].dataIndex;
-
                                 const upperVal = chart.data.datasets[0].data[i];
                                 const lowerVal = chart.data.datasets[1].data[i];
                                 const meanVal = chart.data.datasets[2].data[i];
-
                                 const fmt = (v) => Number(v).toFixed(6).replace('.', ',');
-
                                 const lines = [];
                                 if (meanVisible && meanVal != null) lines.push(`Среднее значение: ${fmt(meanVal)}`);
-
                                 if (ciVisible && upperVal != null && lowerVal != null) {
                                     const eps = 1e-12;
                                     const same = Math.abs(Number(upperVal) - Number(lowerVal)) < eps;
-
                                     if (same) lines.push(`Граница: ${fmt(upperVal)}`);
                                     else {
                                         lines.push(`Верхняя граница: ${fmt(upperVal)}`);
                                         lines.push(`Нижняя граница: ${fmt(lowerVal)}`);
                                     }
                                 }
-
                                 return lines;
                             },
                             label: function () { return ''; },
@@ -215,17 +196,14 @@
                                 const chart = ctx.chart;
                                 const meanVisible = chart.isDatasetVisible(2);
                                 const ciVisible = chart.isDatasetVisible(1);
-
                                 if (!meanVisible && !ciVisible) {
                                     return { borderColor: 'rgba(0,0,0,0)', backgroundColor: 'rgba(0,0,0,0)' };
                                 }
-
                                 if (meanVisible) {
                                     const dsMean = chart.data.datasets[2];
                                     const c = dsMean.backgroundColor || dsMean.borderColor;
                                     return { borderColor: c, backgroundColor: c };
                                 }
-
                                 const dsCi = chart.data.datasets[1];
                                 return { borderColor: 'rgba(0,0,0,0)', backgroundColor: dsCi.backgroundColor };
                             }
@@ -239,67 +217,72 @@
             }
         });
 
-        const btn = document.createElement("button");
-        btn.className = "btn btn-outline-secondary btn-sm mt-2";
-        btn.innerText = "Скачать PNG";
-        btn.onclick = () => {
+        // Кнопки экспорта под графиком
+        const btnGroup = document.createElement("div");
+        btnGroup.className = "d-flex gap-2 mt-3 flex-wrap";
+
+        const csvBtn = document.createElement("button");
+        csvBtn.className = "btn btn-outline-secondary btn-sm";
+        csvBtn.textContent = "Экспорт CSV";
+        csvBtn.onclick = () => {
+            let csv = "Раунд,Среднее,Верхняя граница,Нижняя граница\n";
+            rounds.forEach((r, i) => {
+                csv += `${r},${mean[i] ?? ""},${upper[i] ?? ""},${lower[i] ?? ""}\n`;
+            });
+            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${(testKey || title).replace(/\s+/g, "_")}_${window.currentAlgorithm}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        const jsonBtn = document.createElement("button");
+        jsonBtn.className = "btn btn-outline-secondary btn-sm";
+        jsonBtn.textContent = "Экспорт JSON";
+        jsonBtn.onclick = () => {
+            const exportData = {
+                algorithm: window.currentAlgorithm,
+                suite: document.querySelector('input[name="suiteRadio"]:checked')?.value || 'diff',
+                test: testKey || title,
+                rounds: rounds,
+                mean: mean,
+                upper: upper,
+                lower: lower
+            };
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${(testKey || title).replace(/\s+/g, "_")}_${window.currentAlgorithm}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        const pngBtn = document.createElement("button");
+        pngBtn.className = "btn btn-outline-secondary btn-sm";
+        pngBtn.textContent = "Экспорт PNG";
+        pngBtn.onclick = () => {
             const link = document.createElement("a");
             link.href = chart.toBase64Image();
-            link.download = `${title.replace(/\s+/g, "_")}.png`;
+            link.download = `${(testKey || title).replace(/\s+/g, "_")}_${window.currentAlgorithm}.png`;
             link.click();
         };
-        canvas.parentElement.appendChild(btn);
+
+        btnGroup.appendChild(csvBtn);
+        btnGroup.appendChild(jsonBtn);
+        btnGroup.appendChild(pngBtn);
+
+        canvas.parentElement.appendChild(btnGroup);
     }
 
+    // 4. Константы тестов
     const COLORS = {
         SAC: { line: '#1f77b4', zone: 'rgba(31,119,180,0.25)' },
         BIC: { line: '#d62728', zone: 'rgba(214,39,40,0.25)' },
-        Monobit: { line: '#2ca02c', zone: 'rgba(44,160,44,0.25)' }
+        default: { line: '#2ca02c', zone: 'rgba(44,160,44,0.25)' }
     };
-
-    const algorithmForm = document.getElementById("algorithmForm");
-    const suiteHidden = document.getElementById("suiteHidden");
-
-    if (algorithmForm && suiteHidden) {
-        algorithmForm.addEventListener("submit", () => {
-            const checkedSuite = document.querySelector('input[name="suiteRadio"]:checked');
-            suiteHidden.value = checkedSuite ? checkedSuite.value : "diff";
-        });
-    }
-
-    function activateSuite(value) {
-        document.querySelectorAll(".suite-group")
-            .forEach(g => g.classList.add("d-none"));
-
-        const active = document.querySelector(`.suite-group[data-suite="${value}"]`);
-        if (active) {
-            active.classList.remove("d-none");
-        }
-
-        if (suiteHidden) {
-            suiteHidden.value = value;
-        }
-
-        const url = new URL(window.location.href);
-        url.searchParams.set("suite", value);
-        window.history.replaceState({}, "", url);
-    }
-
-    // 1) при загрузке берём suite из URL (если нет — diff)
-    const url = new URL(window.location.href);
-    const initialSuite = (url.searchParams.get("suite") || "diff").toLowerCase();
-
-    // выставим радио визуально (на случай если server-side checked не совпал)
-    const initialRadio = document.querySelector(`input[name="suiteRadio"][value="${initialSuite}"]`);
-
-    if (initialRadio) initialRadio.checked = true;
-
-    activateSuite(initialSuite);
-
-    // 2) слушаем правильное имя радиокнопок: name="suite"
-    document.querySelectorAll('input[name="suiteRadio"]').forEach(radio => {
-        radio.addEventListener("change", () => activateSuite(radio.value));
-    });
 
     const NIST_TESTS = [
         { key: "Monobit", title: "Monobit Test", yMin: 0, yMax: 1 },
@@ -343,138 +326,154 @@
         { key: "CouponCollector", title: "Coupon Collector Test", yMin: 0, yMax: 1 }
     ];
 
-    // Строим конкретные графики
-    const sac = series("SAC");
-    drawChart("sacChart", "Strict Avalanche Criterion (SAC)", "Доля изменённых выходных битов",
-        sac.mean, sac.upper, sac.lower, COLORS.SAC, 0, 1);
+    // 5. Отрисовка графиков для выбранного suite
+    function renderSuite(suite) {
+        if (suite === "diff") {
+            const sac = series("SAC");
+            drawChart(
+                "sacChart",
+                "Strict Avalanche Criterion (SAC)",
+                "Доля изменённых выходных битов",
+                sac.mean, sac.upper, sac.lower,
+                COLORS.SAC,
+                0, 1,
+                "SAC"
+            );
 
-    const bic = series("BIC");
-    drawChart("bicChart", "Bit Independence Criterion (BIC)", "Максимальная корреляция",
-        bic.mean, bic.upper, bic.lower, COLORS.BIC, -1.4, 2);
+            const bic = series("BIC");
+            drawChart(
+                "bicChart",
+                "Bit Independence Criterion (BIC)",
+                "Максимальная корреляция",
+                bic.mean, bic.upper, bic.lower,
+                COLORS.BIC,
+                -1.4, 2,
+                "BIC"
+            );
+            return;
+        }
 
-    const nistContainer = document.getElementById("nistCharts");
+        // Для NIST, Diehard, TestU01 — динамическая генерация
+        const testsMap = {
+            nist: { tests: NIST_TESTS, color: { line: "#2ca02c", zone: "rgba(44,160,44,0.25)" } },
+            diehard: { tests: DIEHARD_TESTS, color: { line: "#9467bd", zone: "rgba(148,103,189,0.25)" } },
+            testu01: { tests: TESTU01_TESTS, color: { line: "#8c564b", zone: "rgba(140,86,75,0.25)" } }
+        };
 
-    NIST_TESTS.forEach(test => {
-        const col = document.createElement("div");
-        col.className = "col-lg-6";
+        const config = testsMap[suite];
+        if (!config) return;
 
-        const card = document.createElement("div");
-        card.className = "card shadow-sm";
+        const container = document.getElementById(`${suite}Charts`);
+        if (!container) return;
 
-        const body = document.createElement("div");
-        body.className = "card-body";
+        container.innerHTML = ""; // очищаем перед перерисовкой
 
-        const h5 = document.createElement("h5");
-        h5.className = "card-title";
-        h5.innerText = test.title;
+        config.tests.forEach(test => {
+            const col = document.createElement("div");
+            col.className = "col-lg-6";
 
-        const canvas = document.createElement("canvas");
-        const canvasId = `nist-${test.key}`;
-        canvas.id = canvasId;
-        canvas.height = 140;
+            const card = document.createElement("div");
+            card.className = "card shadow-sm";
 
-        body.appendChild(h5);
-        body.appendChild(canvas);
-        card.appendChild(body);
-        col.appendChild(card);
-        nistContainer.appendChild(col);
+            const body = document.createElement("div");
+            body.className = "card-body";
 
-        const s = series(test.key);
+            const h5 = document.createElement("h5");
+            h5.className = "card-title";
+            h5.textContent = test.title;
 
-        drawChart(
-            canvasId,
-            test.title,
-            "p-value",
-            s.mean,
-            s.upper,
-            s.lower,
-            { line: "#2ca02c", zone: "rgba(44,160,44,0.25)" },
-            test.yMin,
-            test.yMax
-        );
+            const canvas = document.createElement("canvas");
+            const canvasId = `${suite}-${test.key}`;
+            canvas.id = canvasId;
+
+            body.appendChild(h5);
+            body.appendChild(canvas);
+            card.appendChild(body);
+            col.appendChild(card);
+            container.appendChild(col);
+
+            const s = series(test.key);
+            drawChart(
+                canvasId,
+                test.title,
+                "p-value",
+                s.mean, s.upper, s.lower,
+                config.color,
+                test.yMin,
+                test.yMax,
+                test.key
+            );
+        });
+    }
+
+    // 6. Управление переключением suite
+    function showSuite(suite) {
+        document.querySelectorAll(".suite-group").forEach(group => {
+            group.style.display = (group.dataset.suite === suite) ? "block" : "none";
+        });
+
+        // Обновляем URL
+        const url = new URL(window.location.href);
+        url.searchParams.set("suite", suite);
+        window.history.replaceState({}, "", url);
+
+        // Рисуем графики (важно — после показа блока!)
+        renderSuite(suite);
+    }
+
+    // Инициализация при загрузке
+    let currentSuite = (new URL(window.location.href).searchParams.get("suite") || "diff").toLowerCase();
+
+    // Синхронизируем радио-кнопку
+    const initialRadio = document.querySelector(`input[name="suiteRadio"][value="${currentSuite}"]`);
+    if (initialRadio) initialRadio.checked = true;
+
+    showSuite(currentSuite);
+
+    // Слушатель переключения радио
+    document.querySelectorAll('input[name="suiteRadio"]').forEach(radio => {
+        radio.addEventListener("change", function () {
+            currentSuite = this.value;
+            showSuite(currentSuite);
+        });
     });
 
-    const diehardContainer = document.getElementById("diehardCharts");
+    // 7. Смена алгоритма → отправка GET-запроса
+    const algorithmSelect = document.getElementById("algorithmSelect");
+    if (algorithmSelect) {
+        algorithmSelect.addEventListener("change", function () {
+            let form = this.closest("form");
+            if (!form) {
+                form = document.createElement("form");
+                form.method = "get";
+                form.action = window.location.pathname;
+                form.style.display = "none";
+                document.body.appendChild(form);
 
-    DIEHARD_TESTS.forEach(test => {
-        const col = document.createElement("div");
-        col.className = "col-lg-6";
+                // Копируем текущие параметры (suite и т.д.)
+                const params = new URLSearchParams(window.location.search);
+                for (const [key, value] of params) {
+                    if (key !== "algorithm") {
+                        const input = document.createElement("input");
+                        input.type = "hidden";
+                        input.name = key;
+                        input.value = value;
+                        form.appendChild(input);
+                    }
+                }
+            }
 
-        const card = document.createElement("div");
-        card.className = "card shadow-sm";
+            // Добавляем/обновляем algorithm
+            let input = form.querySelector('input[name="algorithm"]');
+            if (!input) {
+                input = document.createElement("input");
+                input.type = "hidden";
+                input.name = "algorithm";
+                form.appendChild(input);
+            }
+            input.value = this.value;
 
-        const body = document.createElement("div");
-        body.className = "card-body";
-
-        const h5 = document.createElement("h5");
-        h5.className = "card-title";
-        h5.innerText = test.title;
-
-        const canvas = document.createElement("canvas");
-        const canvasId = `diehard-${test.key}`;
-        canvas.id = canvasId;
-        canvas.height = 140;
-
-        body.appendChild(h5);
-        body.appendChild(canvas);
-        card.appendChild(body);
-        col.appendChild(card);
-        diehardContainer.appendChild(col);
-
-        const s = series(test.key);
-
-        drawChart(
-            canvasId,
-            test.title,
-            "p-value",
-            s.mean,
-            s.upper,
-            s.lower,
-            { line: "#9467bd", zone: "rgba(148,103,189,0.25)" },
-            test.yMin,
-            test.yMax
-        );
-    });
-
-    const testu01Container = document.getElementById("testu01Charts");
-
-    TESTU01_TESTS.forEach(test => {
-        const col = document.createElement("div");
-        col.className = "col-lg-6";
-
-        const card = document.createElement("div");
-        card.className = "card shadow-sm";
-
-        const body = document.createElement("div");
-        body.className = "card-body";
-
-        const h5 = document.createElement("h5");
-        h5.className = "card-title";
-        h5.innerText = test.title;
-
-        const canvas = document.createElement("canvas");
-        const canvasId = `testu01-${test.key}`;
-        canvas.id = canvasId;
-        canvas.height = 140;
-
-        body.appendChild(h5);
-        body.appendChild(canvas);
-        card.appendChild(body);
-        col.appendChild(card);
-        testu01Container.appendChild(col);
-
-        const s = series(test.key);
-
-        drawChart(
-            canvasId,
-            test.title,
-            "p-value",
-            s.mean,
-            s.upper,
-            s.lower,
-            { line: "#8c564b", zone: "rgba(140,86,75,0.25)" },
-            test.yMin,
-            test.yMax
-        );
-    });
+            form.submit();
+        });
+    }
 });

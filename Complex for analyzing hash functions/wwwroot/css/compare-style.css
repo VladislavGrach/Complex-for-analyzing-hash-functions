@@ -187,3 +187,22 @@ h2 {
 .gap-2 {
     gap: 1rem !important;
 }
+
+/* Дополнительные стили специфичные для страницы аналитики */
+.chart-container canvas {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 300px;
+}
+
+.card-title {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #334155;
+    margin-bottom: 1rem;
+}
+
+/* Всегда резервируем место под скроллбар */
+html {
+    scrollbar-gutter: stable;
+}
