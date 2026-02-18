@@ -3,7 +3,6 @@
 
 @{
     ViewData["Title"] = "Результат тестирования";
-
     JsonElement raw;
     try
     {
@@ -13,7 +12,6 @@
     {
         raw = default;
     }
-
     var json = (raw.ValueKind != JsonValueKind.Undefined && raw.ValueKind != JsonValueKind.Null)
         ? Complex_for_analyzing_hash_functions.Helpers.JsonUtils.NormalizeToObject(raw)
         : default;
@@ -23,6 +21,16 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="~/css/results.css">
+
+<style>
+    .details-card {
+        background: #ffffff;
+        border: 2px solid #cbd5e1; /* ← основное изменение */
+        border-radius: 16px;
+        padding: 1.25rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    }
+</style>
 
 <div class="container py-4">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
@@ -34,11 +42,12 @@
             ← Вернуться на главную
         </a>
     </div>
-    <div class="row g-4">
 
+    <div class="row g-4">
         <!-- BASIC -->
         <div class="col-12">
-            <div class="details-card">
+            <div class="details-card basic-card">
+                <!-- можно добавить класс basic-card для вариаций -->
                 <h3 class="details-title">Basic</h3>
                 <div class="table-responsive">
                     <table class="basic-table">

@@ -1,16 +1,28 @@
 ﻿@model Complex_for_analyzing_hash_functions.Models.HashTestParameters
 
-<div class="container py-4">
+@{
+    ViewData["Title"] = "Параметры тестирования";
+}
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="~/css/results.css">
+<link rel="stylesheet" href="~/css/forms.css">
+
+<div class="container py-5">
+    <!-- Заголовок и подзаголовок над карточкой -->
+    <div class="text-center mb-5">
+        <h2 class="mb-2">Параметры тестирования</h2>
+        <p class="text-muted mb-0">
+            Задайте параметры серии экспериментов и запустите вычисление хэш-значений.
+        </p>
+    </div>
+
     <div class="row justify-content-center">
         <div class="col-lg-6 col-xl-5">
-
-            <div class="card shadow-sm">
+            <div class="card shadow-sm form-card">
                 <div class="card-body">
-                    <h2 class="h4 mb-3">Параметры тестирования</h2>
-                    <p class="text-muted small mb-4">
-                        Задайте параметры серии экспериментов и запустите вычисление хэш‑значений.
-                    </p>
-
                     <form asp-action="Run" method="post" id="hashTestForm">
                         <div asp-validation-summary="All" class="text-danger small mb-3"></div>
 
@@ -44,16 +56,14 @@
                             <span asp-validation-for="Algorithm" class="text-danger small"></span>
                         </div>
 
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex justify-content-center">
                             <button type="submit" class="btn btn-primary" id="runBtn">
                                 Запустить тестирование
                             </button>
                         </div>
                     </form>
-
                 </div>
             </div>
-
         </div>
     </div>
 </div>
@@ -74,12 +84,9 @@
           const form = document.getElementById('hashTestForm');
           const overlay = document.getElementById('loadingOverlay');
           const btn = document.getElementById('runBtn');
-
           if (!form) return;
-
           form.addEventListener('submit', function () {
             if (overlay) overlay.classList.remove('d-none');
-
             if (btn) setTimeout(() => btn.disabled = true, 0);
           });
         })();

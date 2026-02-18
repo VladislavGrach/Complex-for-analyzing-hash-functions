@@ -194,6 +194,18 @@
     animation: slideDown 0.3s ease-in-out;
 }
 
+.details-card {
+    background: #ffffff;
+    border: 2px solid #cbd5e1;
+    border-radius: 16px;
+    padding: 1.25rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+    .details-card.basic-card {
+        border-width: 2px;
+    }
+
 /* Анимация появления */
 @keyframes slideDown {
     from {
