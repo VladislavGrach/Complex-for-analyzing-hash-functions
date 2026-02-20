@@ -4,6 +4,7 @@
 
     const rounds = data.rounds;
     const metricsArr = data.metrics; // массив объектов: { "SAC": {Mean, Ci?, Upper?, Lower?, ...}, "BIC": {...}, ... }
+    const chartInstances = {}; // хранилище экземпляров графиков
 
     // 1. Функция извлечения серии (mean + границы)
     function series(name) {
@@ -40,47 +41,26 @@
         }
     };
 
-    const snapTooltipToMeanPlugin = {
-        id: 'snapTooltipToMean',
-        afterEvent(chart, args) {
-            const e = args.event;
-            if (!e || !chart.tooltip) return;
-            if (e.type !== 'mousemove') return;
-
-            const meanVisible = chart.isDatasetVisible(2);
-            const ciVisible = chart.isDatasetVisible(1);
-
-            if (!meanVisible && !ciVisible) {
-                chart.setActiveElements([]);
-                chart.tooltip.setActiveElements([], { x: 0, y: 0 });
-                chart.draw();
-                return;
-            }
-
-            const points = chart.getElementsAtEventForMode(e, 'index', { intersect: false }, false);
-            if (!points || points.length === 0) {
-                chart.setActiveElements([]);
-                chart.tooltip.setActiveElements([], { x: 0, y: 0 });
-                chart.draw();
-                return;
-            }
-
-            const index = points[0].index;
-            const active = [{ datasetIndex: 2, index }];
-            chart.setActiveElements(active);
-            chart.tooltip.setActiveElements(active, e);
-            chart.draw();
-        }
-    };
-
     // 3. Универсальная функция отрисовки графика + кнопки экспорта
     function drawChart(id, title, yLabel, mean, upper, lower, color, yMin = null, yMax = null, testKey = null) {
         const canvas = document.getElementById(id);
         if (!canvas) return;
 
+        // Уничтожаем предыдущий график
+        if (Chart.getChart(canvas)) {
+            Chart.getChart(canvas).destroy();
+        }
+
+        // Удаляем старые кнопки экспорта
+        const cardBody = canvas.closest(".card-body");
+        const oldButtons = cardBody.querySelector(".chart-export-buttons");
+        if (oldButtons) {
+            oldButtons.remove();
+        }
+
         const chart = new Chart(canvas, {
             type: 'line',
-            plugins: [whiteBackgroundPlugin, snapTooltipToMeanPlugin],
+            plugins: [whiteBackgroundPlugin],
             data: {
                 labels: rounds,
                 datasets: [
@@ -126,6 +106,7 @@
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: {
@@ -217,9 +198,12 @@
             }
         });
 
+        // Сохраняем экземпляр
+        chartInstances[id] = chart;
+
         // Кнопки экспорта под графиком
         const btnGroup = document.createElement("div");
-        btnGroup.className = "d-flex gap-2 mt-3 flex-wrap";
+        btnGroup.className = "d-flex gap-2 mt-3 flex-wrap chart-export-buttons";
 
         const csvBtn = document.createElement("button");
         csvBtn.className = "btn btn-outline-secondary btn-sm";
@@ -274,7 +258,7 @@
         btnGroup.appendChild(jsonBtn);
         btnGroup.appendChild(pngBtn);
 
-        canvas.parentElement.appendChild(btnGroup);
+        canvas.closest(".card-body").appendChild(btnGroup);
     }
 
     // 4. Константы тестов
@@ -373,7 +357,7 @@
             col.className = "col-lg-6";
 
             const card = document.createElement("div");
-            card.className = "card shadow-sm";
+            card.className = "card analysis-card";
 
             const body = document.createElement("div");
             body.className = "card-body";
@@ -382,12 +366,18 @@
             h5.className = "card-title";
             h5.textContent = test.title;
 
-            const canvas = document.createElement("canvas");
             const canvasId = `${suite}-${test.key}`;
+
+            const chartContainer = document.createElement("div");
+            chartContainer.className = "chart-container";
+
+            const canvas = document.createElement("canvas");
             canvas.id = canvasId;
 
+            chartContainer.appendChild(canvas);
+
             body.appendChild(h5);
-            body.appendChild(canvas);
+            body.appendChild(chartContainer);
             card.appendChild(body);
             col.appendChild(card);
             container.appendChild(col);

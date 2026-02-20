@@ -3,19 +3,18 @@
 @{
     ViewData["Title"] = "Анализ по раундам";
     Layout = "_Layout";
-    
+
     var suite = ViewBag.Suite as string ?? "diff";
     var algorithm = ViewBag.Algorithm as string ?? "Keccak";
 }
 
-<!-- Подключение шрифта Inter и стилей -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="~/css/compare-style.css">
 
 <div class="container py-4">
-    <!-- Заголовок -->
+
     <h2>Анализ по раундам</h2>
     <p class="subtitle">
         Исследование статистических свойств хэш-функции в зависимости от числа раундов
@@ -23,53 +22,57 @@
 
     <!-- Панель управления -->
     <div class="control-panel">
-        <!-- Выбор алгоритма -->
+
         <div>
-            <label class="form-label mb-1">Алгоритм</label>
-            <div class="d-flex align-items-center gap-2">
-                <select name="algorithm" id="algorithmSelect" class="form-select" style="min-width: 160px;">
-                    <!option value="Keccak" @(algorithm == "Keccak" ? "selected" : null)>Keccak</!option>
-                    <!option value="Blake" @(algorithm == "Blake" ? "selected" : null)>BLAKE-256</!option>
-                    <!option value="Blake2s" @(algorithm == "Blake2s" ? "selected" : null)>BLAKE2s</!option>
-                    <!option value="Blake2b" @(algorithm == "Blake2b" ? "selected" : null)>BLAKE2b</!option>
-                    <!option value="Blake3" @(algorithm == "Blake3" ? "selected" : null)>BLAKE3</!option>
-                </select>
-            </div>
+            <label class="form-label">Алгоритм</label>
+            <select name="algorithm" id="algorithmSelect" class="form-select" style="min-width:160px;">
+                <!option value="Keccak" @(algorithm == "Keccak" ? "selected" : null)>Keccak</!option>
+                <!option value="Blake" @(algorithm == "Blake" ? "selected" : null)>BLAKE-256</!option>
+                <!option value="Blake2s" @(algorithm == "Blake2s" ? "selected" : null)>BLAKE2s</!option>
+                <!option value="Blake2b" @(algorithm == "Blake2b" ? "selected" : null)>BLAKE2b</!option>
+                <!option value="Blake3" @(algorithm == "Blake3" ? "selected" : null)>BLAKE3</!option>
+            </select>
         </div>
 
-        <!-- Группа тестов -->
         <div>
-            <label class="form-label mb-1">Группа тестов</label>
+            <label class="form-label">Группа тестов</label>
             <div class="d-flex flex-wrap gap-2">
+
                 <div class="form-check">
                     <input class="form-check-input" type="radio" name="suiteRadio" id="suite-diff" value="diff"
                            @(suite == "diff" ? "checked" : null)>
                     <label class="form-check-label" for="suite-diff">SAC / BIC</label>
                 </div>
+
                 <div class="form-check">
                     <input class="form-check-input" type="radio" name="suiteRadio" id="suite-nist" value="nist"
                            @(suite == "nist" ? "checked" : null)>
                     <label class="form-check-label" for="suite-nist">NIST</label>
                 </div>
+
                 <div class="form-check">
                     <input class="form-check-input" type="radio" name="suiteRadio" id="suite-diehard" value="diehard"
                            @(suite == "diehard" ? "checked" : null)>
                     <label class="form-check-label" for="suite-diehard">Diehard</label>
                 </div>
+
                 <div class="form-check">
                     <input class="form-check-input" type="radio" name="suiteRadio" id="suite-testu01" value="testu01"
                            @(suite == "testu01" ? "checked" : null)>
                     <label class="form-check-label" for="suite-testu01">TestU01</label>
                 </div>
+
             </div>
         </div>
+
     </div>
 
     <!-- ===== SAC + BIC ===== -->
-    <div class="suite-group" data-suite="diff" style="@(suite != "diff" ? "display: none;" : "")">
+    <div class="suite-group" data-suite="diff" style="@(suite != "diff" ? "display:none;" : "")">
         <div class="row g-4">
+
             <div class="col-lg-6">
-                <div class="card">
+                <div class="card analysis-card">
                     <div class="card-body">
                         <h5 class="card-title">Strict Avalanche Criterion (SAC)</h5>
                         <div class="chart-container">
@@ -80,7 +83,7 @@
             </div>
 
             <div class="col-lg-6">
-                <div class="card">
+                <div class="card analysis-card">
                     <div class="card-body">
                         <h5 class="card-title">Bit Independence Criterion (BIC)</h5>
                         <div class="chart-container">
@@ -89,26 +92,29 @@
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 
     <!-- ===== NIST ===== -->
-    <div class="suite-group" data-suite="nist" style="@(suite != "nist" ? "display: none;" : "")">
+    <div class="suite-group" data-suite="nist" style="@(suite != "nist" ? "display:none;" : "")">
         <div class="row g-4" id="nistCharts"></div>
     </div>
 
     <!-- ===== Diehard ===== -->
-    <div class="suite-group" data-suite="diehard" style="@(suite != "diehard" ? "display: none;" : "")">
+    <div class="suite-group" data-suite="diehard" style="@(suite != "diehard" ? "display:none;" : "")">
         <div class="row g-4" id="diehardCharts"></div>
     </div>
 
     <!-- ===== TestU01 ===== -->
-    <div class="suite-group" data-suite="testu01" style="@(suite != "testu01" ? "display: none;" : "")">
+    <div class="suite-group" data-suite="testu01" style="@(suite != "testu01" ? "display:none;" : "")">
         <div class="row g-4" id="testu01Charts"></div>
     </div>
+
 </div>
 
 @section Scripts {
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
@@ -116,6 +122,7 @@
             rounds: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.Rounds))),
             metrics: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(x => x.Metrics)))
         };
+
         window.currentSuite = "@suite";
         window.currentAlgorithm = "@algorithm";
     </script>

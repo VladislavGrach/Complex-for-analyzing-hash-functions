@@ -3,20 +3,22 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Анализ хэш-функций</title>
-
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <title>@ViewData["Title"] — Анализ хэш-функций</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.css" />
+    <link rel="stylesheet" href="~/css/main.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/results.css" asp-append-version="true" />
 </head>
-
 <body class="d-flex flex-column min-vh-100">
     <header>
-        <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom sticky-top">
+        <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
             <div class="container">
-                <a class="navbar-brand fw-semibold" asp-controller="Home" asp-action="Index">
+                <a class="navbar-brand" asp-controller="Home" asp-action="Index">
                     Анализ хэш-функций
                 </a>
-
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
                         data-bs-target="#navbarMain" aria-controls="navbarMain"
                         aria-expanded="false" aria-label="Переключить навигацию">
@@ -24,43 +26,22 @@
                 </button>
 
                 <div class="collapse navbar-collapse" id="navbarMain">
-                    <ul class="navbar-nav me-auto mb-2 mb-sm-0">
-
+                    <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                         <li class="nav-item">
-                            <a class="nav-link" asp-controller="Home" asp-action="Index">
-                                Главная
-                            </a>
+                            <a class="nav-link" asp-controller="Home" asp-action="Index">Главная</a>
                         </li>
-
                         <li class="nav-item">
-                            <a class="nav-link" asp-controller="HashTest" asp-action="Index">
-                                Запуск тестирования
-                            </a>
+                            <a class="nav-link" asp-controller="HashTest" asp-action="Index">Запуск тестирования</a>
                         </li>
-
                         <li class="nav-item">
-                            <a class="nav-link" asp-controller="HashResults" asp-action="Index">
-                                Результаты
-                            </a>
+                            <a class="nav-link" asp-controller="HashResults" asp-action="Index">Результаты</a>
                         </li>
-
                         <li class="nav-item">
-                            <a class="nav-link"
-                               asp-controller="HashAnalysis"
-                               asp-action="Index"
-                               asp-route-algorithm="Keccak">
-                                Аналитика
-                            </a>
+                            <a class="nav-link" asp-controller="HashAnalysis" asp-action="Index" asp-route-algorithm="Keccak">Аналитика</a>
                         </li>
-
                         <li class="nav-item">
-                            <a class="nav-link"
-                               asp-controller="HashAnalysis"
-                               asp-action="Compare">
-                                Сравнение алгоритмов
-                            </a>
+                            <a class="nav-link" asp-controller="HashAnalysis" asp-action="Compare">Сравнение</a>
                         </li>
-
                     </ul>
                 </div>
             </div>
@@ -68,20 +49,15 @@
     </header>
 
     <main role="main" class="flex-grow-1">
-        <div class="container my-3">
+        <div class="container my-5">
             @RenderBody()
         </div>
     </main>
 
-    <footer class="border-top bg-white mt-auto">
-        <div class="container py-1">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="text-muted small mb-0">
-                    © @DateTime.Now.Year — Комплекс для анализа хэш-функций
-                </div>
-                <div class="text-muted small mb-0">
-                    ВКР
-                </div>
+    <footer class="mt-auto">
+        <div class="container text-center">
+            <div class="text-muted">
+                © @DateTime.Now.Year - Комплекс для анализа хэш-функций
             </div>
         </div>
     </footer>
@@ -89,7 +65,6 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

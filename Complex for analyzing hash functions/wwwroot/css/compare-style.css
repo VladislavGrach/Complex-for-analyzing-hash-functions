@@ -125,7 +125,6 @@ h2 {
     margin-top: 0.75rem;
 }
 
-/* Уменьшены все вертикальные отступы */
 .container.py-4 {
     padding-top: 1rem !important;
     padding-bottom: 1rem !important;
@@ -167,8 +166,8 @@ h2 {
 /* Контейнер графика занимает больше места */
 .chart-container {
     position: relative;
+    height: 320px; /* фиксированная рабочая высота */
     margin: 0.25rem 0 0;
-    min-height: 320px;
 }
 
 /* Для мобильных делаем чуть меньше отступы */
@@ -176,6 +175,22 @@ h2 {
     min-height: 24px;
 }
 
+.analysis-card {
+    margin-top: 0.75rem;
+    border: 2px solid #cbd5e1;
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+    .analysis-card .card-body {
+        display: flex;
+        flex-direction: column;
+        padding: 1.25rem;
+    }
+
+.chart-container {
+    flex-grow: 1;
 }
 
 /* Выравнивание контейнера с радиокнопками */
@@ -183,7 +198,6 @@ h2 {
     align-items: center;
 }
 
-/* Увеличиваем gap для лучшего визуального разделения */
 .gap-2 {
     gap: 1rem !important;
 }
@@ -191,8 +205,12 @@ h2 {
 /* Дополнительные стили специфичные для страницы аналитики */
 .chart-container canvas {
     width: 100% !important;
-    height: auto !important;
-    min-height: 300px;
+    display: block;
+}
+
+canvas {
+    max-width: 100%;
+    display: block;
 }
 
 .card-title {
@@ -202,7 +220,26 @@ h2 {
     margin-bottom: 1rem;
 }
 
-/* Всегда резервируем место под скроллбар */
-html {
-    scrollbar-gutter: stable;
+/* Фикс для предотвращения сдвига контента при появлении скролла */
+body.has-scrollbar {
+    overflow-x: hidden;
+    width: 100%;
+}
+
+    /* Для всех контейнеров на странице аналитики */
+    body.has-scrollbar .container,
+    body.has-scrollbar .card,
+    body.has-scrollbar .chart-container {
+        box-sizing: border-box;
+        transition: padding-right 0.1s ease;
+    }
+
+    /* Фикс для canvas */
+    body.has-scrollbar canvas {
+        transition: max-width 0.1s ease;
+    }
+
+/* Гарантируем что графики не выходят за границы */
+.chart-container {
+    overflow: visible !important;
 }

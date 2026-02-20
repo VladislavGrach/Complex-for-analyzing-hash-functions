@@ -1,0 +1,296 @@
+﻿html {
+    overflow-y: scroll;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+    html::-webkit-scrollbar {
+        width: 0;
+        background: transparent;
+    }
+
+body {
+    overflow-y: scroll;
+}
+
+@supports not (overflow-y: overlay) {
+    html {
+        overflow-y: auto;
+    }
+
+    body {
+        padding-right: calc(100vw - 100%);
+        overflow-x: hidden;
+    }
+}
+
+body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #ffffff;
+    color: #0f172a;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1 0 auto;
+}
+
+/* ===== НАВИГАЦИЯ ===== */
+.navbar {
+    background: #ffffff;
+    border-bottom: 2px solid #cbd5e1;
+    padding: 0.9rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* Простой синий цвет без эффектов */
+.navbar-brand {
+    font-weight: 600;
+    font-size: 1.25rem;
+    color: #2563eb !important; /* Синий цвет */
+    text-decoration: none;
+    transition: color 0.2s ease; /* Только плавное изменение цвета */
+}
+
+    .navbar-brand:hover {
+        color: #1d4ed8 !important; /* Темнее при наведении */
+        /* Без трансформаций, без теней */
+    }
+
+.nav-link {
+    color: #334155;
+    font-weight: 500;
+    padding: 0.5rem 1.1rem;
+    transition: color 0.18s ease;
+    text-decoration: none;
+}
+
+    .nav-link:hover,
+    .nav-link.active {
+        color: #2563eb;
+        text-decoration: underline;
+        text-underline-offset: 4px;
+    }
+
+/* ===== КОНТЕЙНЕР ===== */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+    .container.my-5 {
+        max-width: 1200px;
+    }
+
+/* ===== ФУТЕР ===== */
+footer {
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    padding: 0.75rem 0;
+    font-size: 0.875rem;
+    color: #64748b;
+    text-align: center;
+    margin-top: auto;
+    flex-shrink: 0;
+}
+
+    footer .text-muted {
+        margin: 0;
+    }
+
+/* ===== ГЛАВНАЯ СТРАНИЦА ===== */
+.main-hero {
+    padding-top: 5rem !important;
+    padding-bottom: 5rem !important;
+    background: #ffffff;
+}
+
+.section-label {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    color: #2563eb;
+    background: rgba(37, 99, 235, 0.08);
+    padding: 0.35rem 0.85rem;
+    border-radius: 30px;
+    font-weight: 600;
+    display: inline-block;
+    margin-bottom: 1.5rem;
+}
+
+h1.display-5 {
+    font-size: 2.8rem;
+    font-weight: 700;
+    line-height: 1.15;
+    color: #0f172a;
+    margin-bottom: 1.5rem;
+}
+
+.lead {
+    font-size: 1.15rem;
+    color: #334155;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+/* ===== КНОПКИ ===== */
+.btn-lg {
+    font-size: 1rem !important;
+    font-weight: 500;
+    padding: 0.75rem 2rem;
+    border-radius: 30px;
+    min-width: 220px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-primary {
+    background-color: #2563eb;
+    border: 1.5px solid #2563eb;
+    color: #ffffff;
+}
+
+    .btn-primary:hover {
+        background-color: #1d4ed8;
+        border-color: #1d4ed8;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+
+.btn-outline-secondary {
+    border: 1.5px solid #cbd5e1;
+    color: #475569;
+    background: transparent;
+}
+
+    .btn-outline-secondary:hover {
+        background-color: #f1f5f9;
+        color: #0f172a;
+        border-color: #94a3b8;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    }
+
+/* Группа кнопок на главной */
+.d-flex.flex-wrap.gap-3 {
+    margin: 2rem 0;
+}
+
+/* ===== ИНФОРМАЦИОННЫЙ БЛОК ===== */
+.info-box {
+    background: #ffffff;
+    border: 2px solid #cbd5e1;
+    border-radius: 16px;
+    padding: 1.5rem 2rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    transition: box-shadow 0.2s;
+}
+
+    .info-box:hover {
+        box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+    }
+
+    .info-box h2.h5 {
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #0f172a;
+    }
+
+    .info-box ul.list-unstyled {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        font-size: 0.92rem;
+        color: #475569;
+        line-height: 1.7;
+    }
+
+    .info-box li {
+        position: relative;
+        padding-left: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+        .info-box li::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #2563eb;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+/* ===== УТИЛИТЫ ===== */
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: #64748b;
+}
+
+/* ===== АДАПТИВНОСТЬ ===== */
+@media (max-width: 768px) {
+    .navbar-brand {
+        font-size: 1.1rem;
+    }
+
+    .nav-link {
+        padding: 0.5rem 0;
+    }
+
+    h1.display-5 {
+        font-size: 2rem;
+    }
+
+    .lead {
+        font-size: 1rem;
+    }
+
+    .btn-lg {
+        min-width: 100%;
+        padding: 0.75rem 1.5rem;
+    }
+
+    .d-flex.flex-wrap.gap-3 {
+        flex-direction: column;
+        gap: 0.75rem !important;
+    }
+
+    .main-hero {
+        padding-top: 3rem !important;
+        padding-bottom: 3rem !important;
+    }
+
+    .info-box {
+        padding: 1.25rem;
+    }
+}
+
+@media (max-width: 992px) {
+    .navbar-collapse {
+        padding: 1rem 0;
+    }
+}
+
+/* Фикс для страницы аналитики */
+body:has(.chart-container) {
+    padding-right: 0 !important;
+}
+
+/* Фикс для Firefox */
+@-moz-document url-prefix() {
+    body:has(.chart-container) {
+        padding-right: 0 !important;
+    }
+}
