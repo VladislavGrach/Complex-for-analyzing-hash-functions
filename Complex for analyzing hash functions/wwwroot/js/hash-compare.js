@@ -352,6 +352,10 @@
 
     // Обработчики для кнопок экспорта
     document.getElementById("exportCsvBtn")?.addEventListener("click", () => {
+        const rounds = getRounds();
+        const suite = getCheckedSuite();
+        const metric = metricSelect.value;
+
         // Формируем CSV
         let csv = "Алгоритм,Значение\n";
         for (let i = 0; i < algorithmsData.length; i++) {
@@ -363,27 +367,35 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `compare_${getCheckedSuite()}_${metricSelect.value}.csv`;
+        a.download = `compare_${suite}_${metric}_${rounds}_rounds.csv`;
         a.click();
         URL.revokeObjectURL(url);
     });
 
     document.getElementById("exportJsonBtn")?.addEventListener("click", () => {
+        const rounds = getRounds();
+        const suite = getCheckedSuite();
+        const metric = metricSelect.value;
+
         // Формируем JSON
         const data = {
-            suite: getCheckedSuite(),
-            metric: metricSelect.value,
-            rounds: getRounds(),
+            suite: suite,
+            metric: metric,
+            rounds: rounds,
             algorithms: algorithmsData,
             values: meanData
         };
 
         // Скачиваем файл
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const blob = new Blob(
+            [JSON.stringify(data, null, 2)],
+            { type: 'application/json' }
+        );
+
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `compare_${getCheckedSuite()}_${metricSelect.value}.json`;
+        a.download = `compare_${suite}_${metric}_${rounds}_rounds.json`;
         a.click();
         URL.revokeObjectURL(url);
     });
@@ -391,13 +403,17 @@
     document.getElementById("exportPngBtn")?.addEventListener("click", () => {
         if (!chart) return;
 
+        const rounds = getRounds();
+        const suite = getCheckedSuite();
+        const metric = metricSelect.value;
+
         const canvas = chart.canvas;
         const ctx = canvas.getContext("2d");
 
         // Сохраняем текущее состояние
         ctx.save();
 
-        // Рисуем белый фон ПОД графиком
+        // Белый фон под графиком
         ctx.globalCompositeOperation = "destination-over";
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -410,7 +426,7 @@
 
         const a = document.createElement("a");
         a.href = url;
-        a.download = `compare_${getCheckedSuite()}_${metricSelect.value}.png`;
+        a.download = `compare_${suite}_${metric}_${rounds}_rounds.png`;
         a.click();
     });
 });
