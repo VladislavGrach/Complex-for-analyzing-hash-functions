@@ -169,32 +169,6 @@
                                                         </div>
                                                     </div>
                                                 }
-
-                                                @if (json.TryGetProperty("Avalanche", out var avalanche) && avalanche.ValueKind == JsonValueKind.Object)
-                                                {
-                                                    <div class="col-lg-6">
-                                                        <div class="details-card h-100">
-                                                            <h3 class="details-title">Avalanche</h3>
-                                                            <ul class="stats-list">
-                                                                @foreach (var test in avalanche.EnumerateObject())
-                                                                {
-                                                                    <li class="stats-item">
-                                                                        <span class="stats-label">@test.Name</span>
-                                                                        @if (test.Name == "Notes")
-                                                                        {
-                                                                            <span class="stats-value notes-value">@test.Value</span>
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            <span class="stats-value">@test.Value</span>
-                                                                        }
-                                                                    </li>
-                                                                }
-                                                            </ul>
-                                                        </div>
-                                                    </div>
-                                                }
-
                                                 @if (json.TryGetProperty("BIC", out var bic) && bic.ValueKind == JsonValueKind.Object)
                                                 {
                                                     <div class="col-lg-6">
@@ -205,14 +179,7 @@
                                                                 {
                                                                     <li class="stats-item">
                                                                         <span class="stats-label">@test.Name</span>
-                                                                        @if (test.Name == "Notes")
-                                                                        {
-                                                                            <span class="stats-value notes-value bic-notes">@test.Value</span>
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            <span class="stats-value">@test.Value</span>
-                                                                        }
+                                                                        <span class="stats-value @(test.Name == "Notes" ? "notes-value" : "")">@test.Value</span>
                                                                     </li>
                                                                 }
                                                             </ul>
@@ -220,6 +187,24 @@
                                                     </div>
                                                 }
 
+                                                <!-- Аналогично для Avalanche -->
+                                                @if (json.TryGetProperty("Avalanche", out var avalanche) && avalanche.ValueKind == JsonValueKind.Object)
+                                                {
+                                                    <div class="col-lg-6">
+                                                        <div class="details-card h-100">
+                                                            <h3 class="details-title">Avalanche</h3>
+                                                            <ul class="stats-list">
+                                                                @foreach (var test in avalanche.EnumerateObject())
+                                                                {
+                                                                    <li class="stats-item">
+                                                                        <span class="stats-label">@test.Name</span>
+                                                                        <span class="stats-value @(test.Name == "Notes" ? "notes-value" : "")">@test.Value</span>
+                                                                    </li>
+                                                                }
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                }
                                                 <div class="col-12">
                                                     <div class="details-card">
                                                         <details>

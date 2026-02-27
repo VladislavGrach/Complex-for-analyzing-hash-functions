@@ -89,27 +89,27 @@
     flex: 0 0 200px;
     min-width: 200px;
     max-width: 240px;
+    text-align: left;
 }
 
 .stats-value {
-    color: #0f172a;
+    color: #0f172a !important;
+    text-align: right !important;
     font-family: 'Inter', monospace;
     font-weight: 400;
     flex: 1;
-    text-align: right;
     white-space: pre-wrap;
     word-break: break-word;
-    line-height: 1.45;
+    line-height: 1.5;
 }
 
-    .stats-value.notes-value {
-        text-align: left;
+    /* Убираем старое исключение для Notes */
+    .stats-value.notes-value,
+    .stats-value.notes-value.bic-notes {
+        color: #0f172a !important;
+        text-align: right !important;
         padding-left: 0;
-        color: #475569;
-        font-family: 'Inter', sans-serif;
-        white-space: pre-wrap;
-        word-break: break-word;
-        line-height: 1.5;
+        font-family: 'Inter', monospace;
     }
 
 .bic-notes {
@@ -233,4 +233,11 @@ h2 {
     font-size: 0.9rem;
     margin-bottom: 0.75rem;
     line-height: 1.5;
+}
+
+/* Пустое состояние */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #94a3b8;
 }

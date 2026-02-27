@@ -5,5 +5,5 @@
     public double MaxDeviationFromHalf { get; set; }
     public double MinPValue { get; set; }
     public double MaxPValue { get; set; }
-    public string Notes { get; set; }
+    public required string Notes { get; set; }
 }

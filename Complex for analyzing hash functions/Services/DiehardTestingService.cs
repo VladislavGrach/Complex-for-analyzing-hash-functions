@@ -190,7 +190,7 @@ namespace The_complex_of_testing_hash_functions.Services
 
         #region Runs Test
         // Тест серийности
-        public double RunsTest(string bits)
+        public new double RunsTest(string bits)
         {
             const int BLOCK_SIZE = 20000;
             const int MIN_BLOCKS = 20;

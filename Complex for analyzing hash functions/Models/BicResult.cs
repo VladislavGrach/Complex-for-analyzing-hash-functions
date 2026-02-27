@@ -6,6 +6,6 @@
         public double StdCorrelation { get; set; }
         public double MaxCorrelationAbs { get; set; }
         public double MinCorrelation { get; set; }
-        public string Notes { get; set; }
+        public required string Notes { get; set; }
     }
 }
