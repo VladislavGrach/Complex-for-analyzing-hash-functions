@@ -77,7 +77,6 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             {
                 using var doc = JsonDocument.Parse(r.BitFlipJson);
                 var root = JsonUtils.NormalizeToObject(doc.RootElement);
-
                 var metrics = new Dictionary<string, double?>();
 
                 // === NIST ===
@@ -86,9 +85,13 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                     foreach (var test in NistTests)
                     {
                         if (nist.TryGetProperty(test, out var v))
-                            metrics[test] = v.GetDouble();
+                        {
+                            metrics[test] = GetDoubleSafe(v);
+                        }
                         else
+                        {
                             metrics[test] = null;
+                        }
                     }
                 }
 
@@ -98,9 +101,13 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                     foreach (var test in DiehardTests)
                     {
                         if (diehard.TryGetProperty(test, out var v))
-                            metrics[test] = v.GetDouble();
+                        {
+                            metrics[test] = GetDoubleSafe(v);
+                        }
                         else
+                        {
                             metrics[test] = null;
+                        }
                     }
                 }
 
@@ -110,9 +117,13 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                     foreach (var test in TestU01Tests)
                     {
                         if (testu01.TryGetProperty(test, out var v))
-                            metrics[test] = v.GetDouble();
+                        {
+                            metrics[test] = GetDoubleSafe(v);
+                        }
                         else
+                        {
                             metrics[test] = null;
+                        }
                     }
                 }
 
@@ -120,14 +131,14 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                 if (root.TryGetProperty("Avalanche", out var a) &&
                     a.TryGetProperty("MeanFlipRate", out var sac))
                 {
-                    metrics["SAC"] = sac.GetDouble();
+                    metrics["SAC"] = GetDoubleSafe(sac);
                 }
 
                 // === BIC ===
                 if (root.TryGetProperty("BIC", out var b) &&
                     b.TryGetProperty("MaxCorrelationAbs", out var bic))
                 {
-                    metrics["BIC"] = bic.GetDouble();
+                    metrics["BIC"] = GetDoubleSafe(bic);
                 }
 
                 return new
@@ -224,6 +235,34 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             ViewBag.Suite = suite;
 
             return View(aggregated);
+        }
+
+        private static double? GetDoubleSafe(JsonElement element)
+        {
+            if (element.ValueKind == JsonValueKind.Number)
+            {
+                return element.GetDouble();
+            }
+
+            if (element.ValueKind == JsonValueKind.String)
+            {
+                string str = element.GetString();
+                if (string.IsNullOrEmpty(str)) return null;
+
+                switch (str)
+                {
+                    case "NaN": return double.NaN;
+                    case "Infinity": return double.PositiveInfinity;
+                    case "-Infinity": return double.NegativeInfinity;
+                    default:
+                        // пытаемся распарсить как обычное число
+                        if (double.TryParse(str, NumberStyles.Any, CultureInfo.InvariantCulture, out double val))
+                            return val;
+                        return null;
+                }
+            }
+
+            return null;
         }
 
         private static bool IsPValueMetric(string name)

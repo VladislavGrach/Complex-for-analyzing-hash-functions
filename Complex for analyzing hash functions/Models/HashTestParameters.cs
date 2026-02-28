@@ -11,7 +11,7 @@ namespace Complex_for_analyzing_hash_functions.Models
         public int InputSizeBytes { get; set; }
 
         [Range(1, int.MaxValue, ErrorMessage = "Число раундов должно быть положительным.")]
-        public int Rounds { get; set; }
+        public int Rounds { get; set; } = 7;
 
         public string Algorithm { get; set; } = "Keccak";
     }

@@ -42,10 +42,39 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             return View(model: new HashTestParameters());
         }
 
+        private (int Min, int Max)? GetRoundsRange(string algorithm)
+        {
+            return algorithm switch
+            {
+                "Keccak" => (1, 24),
+                "Blake" => (1, 14),
+                "Blake2s" => (1, 10),
+                "Blake2b" => (1, 12),
+                "Blake3" => (1, 7),
+                _ => null
+            };
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Run(HashTestParameters p)
         {
+            var range = GetRoundsRange(p.Algorithm);
+
+            if (range.HasValue)
+            {
+                if (p.Rounds < range.Value.Min || p.Rounds > range.Value.Max)
+                {
+                    ModelState.AddModelError(
+                        nameof(p.Rounds),
+                        $"Для алгоритма {p.Algorithm} допустимый диапазон раундов: {range.Value.Min}–{range.Value.Max}."
+                    );
+
+                    return View("Index", p);
+                }
+            }
+
+
             if (!ModelState.IsValid)
             {
                 return View("Index", p);
@@ -66,6 +95,7 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             byte[] sampleHash;
             try
             {
+                Console.WriteLine($"Rounds: {p.Rounds}");
                 sampleHash = hasher.ComputeHash(sampleInput, p.Rounds);
             }
             catch (Exception ex)

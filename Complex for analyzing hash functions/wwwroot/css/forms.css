@@ -81,3 +81,23 @@
     background: rgba(0,0,0,0.45) !important;
     backdrop-filter: blur(4px);
 }
+
+/* Сообщения об ошибках */
+.field-validation-error {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #dc3545; /* Bootstrap danger */
+}
+
+/* Подсветка невалидного поля */
+.input-validation-error {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.15rem rgba(220, 53, 69, 0.15);
+}
+
+/* Чтобы пустые span не занимали место */
+.field-validation-valid {
+    display: none;
+}

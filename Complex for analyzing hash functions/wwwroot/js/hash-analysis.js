@@ -292,10 +292,10 @@
         { key: "CountOnes", title: "Count Ones Test", yMin: 0, yMax: 1 },
         { key: "MatrixRanks", title: "Matrix Ranks Test", yMin: 0, yMax: 1 },
         { key: "OverlappingPermutations", title: "Overlapping Permutations Test", yMin: 0, yMax: 1 },
-        { key: "RunsDiehard", title: "Runs Test (Diehard)", yMin: 0, yMax: 1 },
-        { key: "GcdDiehard", title: "GCD Test (Diehard)", yMin: 0, yMax: 1 },
-        { key: "SqueezeDiehard", title: "Squeeze Test (Diehard)", yMin: 0, yMax: 1 },
-        { key: "CrapsDiehard", title: "Craps Test (Diehard)", yMin: 0, yMax: 1 }
+        { key: "RunsDiehard", title: "Runs Test", yMin: 0, yMax: 1 },
+        { key: "GcdDiehard", title: "GCD Test", yMin: 0, yMax: 1 },
+        { key: "SqueezeDiehard", title: "Squeeze Test", yMin: 0, yMax: 1 },
+        { key: "CrapsDiehard", title: "Craps Test", yMin: 0, yMax: 1 }
     ];
 
     const TESTU01_TESTS = [

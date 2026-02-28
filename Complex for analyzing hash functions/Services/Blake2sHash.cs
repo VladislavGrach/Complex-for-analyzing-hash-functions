@@ -45,9 +45,9 @@ namespace Complex_for_analyzing_hash_functions.Services
 
         public byte[] ComputeHash(byte[] input, int rounds = 10)
         {
-            if (rounds <= 0)
+            if (rounds <= 0 || rounds > 10)
             {
-                throw new ArgumentOutOfRangeException(nameof(rounds));
+                throw new ArgumentOutOfRangeException(nameof(rounds), "BLAKE2s supports 1..10 rounds.");
             }
 
             // BLAKE2s parameters for 32-byte output

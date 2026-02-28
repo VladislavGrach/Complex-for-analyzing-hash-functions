@@ -30,13 +30,8 @@ namespace Complex_for_analyzing_hash_functions.Services
         private const uint PARENT = 1u << 2;
         private const uint ROOT = 1u << 3;
 
-        public byte[] ComputeHash(byte[] input, int rounds = 7)
+        public byte[] ComputeHash(byte[] input, int rounds)
         {
-            if (rounds < 1 || rounds > 14)
-            {
-                throw new ArgumentOutOfRangeException(nameof(rounds), "BLAKE3 supports 1..14 rounds.");
-            }
-
             uint[] chaining = (uint[])IV.Clone();
 
             // Для линейного режима обработаем данные блоками по 64 байта
