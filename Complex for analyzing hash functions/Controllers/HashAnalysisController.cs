@@ -424,6 +424,19 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                             value = tval.GetDouble();
                         }
                         break;
+                    case "additional":
+                        if (root.TryGetProperty("AdditionalStatistics", out var additional))
+                        {
+                            foreach (var prop in additional.EnumerateObject())
+                            {
+                                if (string.Equals(prop.Name, metric, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    value = GetDoubleSafe(prop.Value) ?? double.NaN;
+                                    break;
+                                }
+                            }
+                        }
+                        break;
                 }
 
                 return new
@@ -504,6 +517,19 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                     case "testu01":
                         if (root.TryGetProperty("TestU01", out var testu01) && testu01.TryGetProperty(metric, out var tval))
                             value = tval.GetDouble();
+                        break;
+                    case "additional":
+                        if (root.TryGetProperty("AdditionalStatistics", out var additional))
+                        {
+                            foreach (var prop in additional.EnumerateObject())
+                            {
+                                if (string.Equals(prop.Name, metric, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    value = GetDoubleSafe(prop.Value) ?? double.NaN;
+                                    break;
+                                }
+                            }
+                        }
                         break;
                 }
 

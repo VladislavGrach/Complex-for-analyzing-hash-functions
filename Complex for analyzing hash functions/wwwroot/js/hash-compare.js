@@ -16,7 +16,8 @@
         diff: "SAC",
         nist: "Monobit",
         diehard: "BirthdaySpacings",
-        testu01: "Collision"
+        testu01: "Collision",
+        additional: "ChiSquare"
     };
 
     const TEST_SUITES = {
@@ -73,6 +74,39 @@
                 MultinomialTest: { title: "Multinomial Test", isPValue: true },
                 ClosePairs: { title: "Close Pairs", isPValue: true },
                 CouponCollector: { title: "Coupon Collector", isPValue: true }
+            }
+        },
+        additional: {
+            label: "Additional Statistics",
+            tests: {
+                ChiSquare: {
+                    title: "Chi-Square Test",
+                    yLabel: "Значение χ²",
+                    isPValue: false,
+                    yMin: 0,
+                    yMax: null // авто-масштабирование
+                },
+                ShannonEntropy: {
+                    title: "Shannon Entropy",
+                    yLabel: "Энтропия",
+                    isPValue: false,
+                    yMin: 0,
+                    yMax: 1
+                },
+                Autocorrelation: {
+                    title: "Autocorrelation",
+                    yLabel: "Коэффициент автокорреляции",
+                    isPValue: false,
+                    yMin: -1,
+                    yMax: 1
+                },
+                MutualInformation: {
+                    title: "Mutual Information",
+                    yLabel: "Взаимная информация",
+                    isPValue: false,
+                    yMin: 0,
+                    yMax: 1
+                }
             }
         }
     };
@@ -165,6 +199,18 @@
         const testCfg = suiteCfg.tests[metric];
         if (!testCfg) return;
 
+        // Определяем границы оси Y на основе конфигурации теста
+        const yMin = testCfg.yMin !== undefined ? testCfg.yMin : 0;
+        const yMax = testCfg.yMax !== undefined ? testCfg.yMax : 1;
+
+        // Для авто-масштабирования (yMax = null) используем максимальное значение из данных
+        let effectiveYMax = yMax;
+        if (yMax === null && meanData.length > 0) {
+            // Находим максимальное значение среди данных и добавляем 10% запаса
+            const maxValue = Math.max(...meanData.filter(v => v !== null && !isNaN(v)));
+            effectiveYMax = Math.ceil(maxValue * 1.1); // +10% и округляем вверх
+        }
+
         // Если график уже существует - обновляем его данные
         if (chart) {
             // Обновляем данные
@@ -178,11 +224,16 @@
             chart.options.plugins.title.text = `Сравнение алгоритмов — ${suiteCfg.label}: ${testCfg.title}`;
             chart.options.scales.y.title.text = testCfg.isPValue ? "p-value" : testCfg.yLabel;
 
-            // Важно! Принудительно сбрасываем мин/макс для пересчета
-            chart.options.scales.y.min = 0;
-            chart.options.scales.y.max = 1;
+            // Устанавливаем мин/макс в зависимости от теста
+            chart.options.scales.y.min = yMin;
+            chart.options.scales.y.max = effectiveYMax;
 
-            // Обновляем график
+            // Для авто-масштабирования убираем принудительный пересчет
+            if (testCfg.yMax === null) {
+                // Удаляем afterDataLimits, если он был добавлен
+                delete chart.options.scales.y.afterDataLimits;
+            }
+
             chart.update();
             return;
         }
@@ -191,6 +242,37 @@
         const colors = meanData.map(v =>
             testCfg.isPValue && v < 0.01 ? "#d62728" : "#1f77b4"
         );
+
+        // Настраиваем опции для оси Y
+        const yAxisOptions = {
+            beginAtZero: yMin >= 0,
+            min: yMin,
+            max: effectiveYMax,
+            title: {
+                display: true,
+                text: testCfg.isPValue ? "p-value" : testCfg.yLabel
+            }
+        };
+
+        // Добавляем настройки ticks в зависимости от диапазона
+        if (effectiveYMax > 10) {
+            // Для больших значений (Chi-Square) используем целые числа
+            yAxisOptions.ticks = {
+                callback: (v) => Number.isInteger(v) ? v : v.toFixed(0),
+                stepSize: Math.ceil(effectiveYMax / 10) // Примерно 10 делений
+            };
+        } else if (effectiveYMax <= 1) {
+            // Для значений от 0 до 1
+            yAxisOptions.ticks = {
+                stepSize: 0.1,
+                callback: (v) => v.toFixed(1)
+            };
+        } else {
+            // Для промежуточных значений
+            yAxisOptions.ticks = {
+                callback: (v) => v.toFixed(2)
+            };
+        }
 
         chart = new Chart(canvas, {
             type: "bar",
@@ -219,32 +301,23 @@
                         callbacks: {
                             label: (ctx) => {
                                 const v = ctx.parsed.y;
-                                return testCfg.isPValue
-                                    ? (v < 0.01 ? `p-value: ${v.toExponential(2)} (FAIL)` : `p-value: ${v.toFixed(4)}`)
-                                    : `Значение: ${v.toFixed(6)}`;
+                                if (testCfg.isPValue) {
+                                    return v < 0.01
+                                        ? `p-value: ${v.toExponential(2)} (FAIL)`
+                                        : `p-value: ${v.toFixed(4)}`;
+                                } else {
+                                    // Для Chi-Square используем формат с 2 знаками после запятой
+                                    if (suite === "additional" && metric === "ChiSquare") {
+                                        return `Значение: ${v.toFixed(2)}`;
+                                    }
+                                    return `Значение: ${v.toFixed(6)}`;
+                                }
                             }
                         }
                     }
                 },
                 scales: {
-                    y: {
-                        beginAtZero: true,
-                        min: 0,
-                        max: 1,
-                        ticks: {
-                            stepSize: 0.1,
-                            callback: (v) => Number(v).toFixed(1)
-                        },
-                        title: {
-                            display: true,
-                            text: testCfg.isPValue ? "p-value" : testCfg.yLabel
-                        },
-                        // Принудительно пересчитываем границы при каждом рендере
-                        afterDataLimits: (axis) => {
-                            axis.min = 0;
-                            axis.max = 1;
-                        }
-                    },
+                    y: yAxisOptions,
                     x: {
                         ticks: {
                             rotation: 0,
