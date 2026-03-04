@@ -187,7 +187,6 @@
                                                     </div>
                                                 }
 
-                                                <!-- Аналогично для Avalanche -->
                                                 @if (json.TryGetProperty("Avalanche", out var avalanche) && avalanche.ValueKind == JsonValueKind.Object)
                                                 {
                                                     <div class="col-lg-6">
@@ -205,6 +204,25 @@
                                                         </div>
                                                     </div>
                                                 }
+
+                                                @if (json.TryGetProperty("AdditionalStatistics", out var additional) && additional.ValueKind == JsonValueKind.Object)
+                                                {
+                                                    <div class="col-lg-6">
+                                                        <div class="details-card h-100">
+                                                            <h3 class="details-title">Additional Statistics</h3>
+                                                            <ul class="stats-list">
+                                                                @foreach (var test in additional.EnumerateObject())
+                                                                {
+                                                                    <li class="stats-item">
+                                                                        <span class="stats-label">@test.Name</span>
+                                                                        <span class="stats-value @(test.Name == "Notes" ? "notes-value" : "")">@test.Value</span>
+                                                                    </li>
+                                                                }
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                }
+
                                                 <div class="col-12">
                                                     <div class="details-card">
                                                         <details>

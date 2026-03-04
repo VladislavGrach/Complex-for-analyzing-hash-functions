@@ -62,6 +62,12 @@
                     <label class="form-check-label" for="suite-testu01">TestU01</label>
                 </div>
 
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="suiteRadio" id="suite-additional" value="additional"
+                           @(suite == "additional" ? "checked" : null)>
+                    <label class="form-check-label" for="suite-additional">Additional</label>
+                </div>
+
             </div>
         </div>
 
@@ -111,6 +117,10 @@
         <div class="row g-4" id="testu01Charts"></div>
     </div>
 
+    <!-- ===== Additional Statistics ===== -->
+    <div class="suite-group" data-suite="additional" style="@(suite != "additional" ? "display:none;" : "")">
+        <div class="row g-4" id="additionalCharts"></div>
+    </div>
 </div>
 
 @section Scripts {

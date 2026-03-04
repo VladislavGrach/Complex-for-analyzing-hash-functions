@@ -8,6 +8,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
 using System.Text.Json.Serialization;
+using Complex_for_analyzing_hash_functions.Statistics;
 
 namespace Complex_for_analyzing_hash_functions.Controllers
 {
@@ -87,7 +88,7 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             var stats = new StatisticsService(hasher);
             var result = stats.RunTest(p);
 
-            // --- 2. Sample input ---
+            // --- 2. Подготовка ---
             byte[] sampleInput = new byte[Math.Max(1, p.InputSizeBytes)];
             new Random().NextBytes(sampleInput);
 
@@ -95,7 +96,6 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             byte[] sampleHash;
             try
             {
-                Console.WriteLine($"Rounds: {p.Rounds}");
                 sampleHash = hasher.ComputeHash(sampleInput, p.Rounds);
             }
             catch (Exception ex)
@@ -110,6 +110,8 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             string bits = BitUtils.BytesToBitString(sampleHash);
 
             const int streamLength = 4_500_000;
+
+            var allHashBytes = new List<byte>();
 
             // Списки для хранения результатов каждого запуска
             var monobitList = new List<double>();
@@ -160,6 +162,20 @@ namespace Complex_for_analyzing_hash_functions.Controllers
 
             for (int i = 0; i < p.TestsCount; i++)
             {
+                byte[] hashBytes;
+
+                try
+                {
+                    hashBytes = hasher.ComputeHash(sampleInput, p.Rounds);
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError("", "Hashing error: " + ex.Message);
+                    return View("Index", p);
+                }
+
+                allHashBytes.AddRange(hashBytes);
+
                 // Новый поток битов для каждого теста
                 string streamBits = _nist.GenerateHashStream(
                     input => hasher.ComputeHash(input, p.Rounds),
@@ -226,6 +242,15 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                 bicMaxCorrelationAbsList.Add(bic.MaxCorrelationAbs);
                 bicMinCorrelationList.Add(bic.MinCorrelation);
             }
+
+            string largeStreamBits = _nist.GenerateHashStream(
+                input => hasher.ComputeHash(input, p.Rounds),
+                streamLength);
+
+            double chiSquare = StatisticsAnalyzer.ChiSquareBits(largeStreamBits);
+            double entropy = StatisticsAnalyzer.ShannonEntropyBits(largeStreamBits);
+            double autocorr = StatisticsAnalyzer.AutocorrelationBits(largeStreamBits, 1);
+            double mutualInfo = StatisticsAnalyzer.MutualInformationBits(largeStreamBits, 1);
 
             // === Агрегация ===
             var fullStats = new
@@ -294,6 +319,14 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                     MaxCorrelationAbs = bicMaxCorrelationAbsList.Any() ? bicMaxCorrelationAbsList.Max() : double.NaN,
                     MinCorrelationAbs = bicMinCorrelationList.Any() ? bicMinCorrelationList.Min() : double.NaN,
                     Notes = $"Среднее по количеству запусков: {p.TestsCount}"
+                },
+                AdditionalStatistics = new
+                {
+                    ChiSquare = chiSquare,
+                    ShannonEntropy = entropy,
+                    Autocorrelation = autocorr,
+                    MutualInformation = mutualInfo,
+                    Notes = $"Рассчитано по битовой последовательности длиной {largeStreamBits.Length} бит."
                 }
             };
 

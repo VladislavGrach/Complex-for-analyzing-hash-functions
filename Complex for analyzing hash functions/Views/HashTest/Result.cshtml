@@ -214,6 +214,32 @@
                 </div>
             }
 
+            <!-- Additional statistics -->
+            @if (json.TryGetProperty("AdditionalStatistics", out var additional) && additional.ValueKind == JsonValueKind.Object)
+            {
+                <div class="col-lg-6">
+                    <div class="details-card h-100">
+                        <h3 class="details-title">Additional Statistics</h3>
+                        <ul class="stats-list">
+                            @foreach (var test in additional.EnumerateObject())
+                            {
+                                <li class="stats-item">
+                                    <span class="stats-label">@test.Name</span>
+                                    @if (test.Name == "Notes")
+                                    {
+                                        <span class="stats-value notes-value">@test.Value</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="stats-value">@test.Value</span>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            }
+
             <!-- Полный JSON -->
             <div class="col-12">
                 <div class="details-card">

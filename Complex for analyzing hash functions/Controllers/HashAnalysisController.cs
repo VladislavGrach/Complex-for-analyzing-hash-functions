@@ -67,6 +67,14 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             "CouponCollector"
         };
 
+        static readonly string[] AdditionalTests = new[]
+        {
+            "ChiSquare",
+            "ShannonEntropy",
+            "Autocorrelation",
+            "MutualInformation"
+        };
+
         public IActionResult Aggregated(string algorithm = "Keccak", string suite = "diff")
         {
             var raw = _db.HashTestResults
@@ -141,6 +149,29 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                     metrics["BIC"] = GetDoubleSafe(bic);
                 }
 
+                // === Additional Statistics ===
+                if (root.TryGetProperty("AdditionalStatistics", out var additional))
+                {
+                    var additionalDict = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var prop in additional.EnumerateObject())
+                    {
+                        additionalDict[prop.Name] = prop.Value;
+                    }
+
+                    foreach (var test in AdditionalTests)
+                    {
+                        if (additionalDict.TryGetValue(test, out var v))
+                        {
+                            var value = GetDoubleSafe(v);
+                            metrics[test] = value;
+                        }
+                        else
+                        {
+                            metrics[test] = null;
+                        }
+                    }
+                }
+
                 return new
                 {
                     r.Rounds,
@@ -156,12 +187,14 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                 {
                     var point = new RoundStatisticAggregatedPoint
                     {
-                        Rounds = g.Key
+                        Rounds = g.Key,
+                        Metrics = new Dictionary<string, AggregatedMetric>()
                     };
 
                     var allMetricNames = g
                         .SelectMany(x => x.Metrics.Keys)
-                        .Distinct();
+                        .Distinct()
+                        .ToList();
 
                     foreach (var name in allMetricNames)
                     {
@@ -205,14 +238,14 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                             {
                                 Mean = meanP,
                                 Std = pseudoStd,
-                                Ci = pseudoStd,  // совместимость с твоим JS
+                                Ci = pseudoStd,
                                 Lower = lowerP,
                                 Upper = upperP
                             };
                         }
                         else
                         {
-                            // SAC/BIC: обычные расчёты (не p-value)
+                            // SAC/BIC/доп.статистики: обычные расчёты (не p-value)
                             double mean0 = values.Average();
                             double std0 = values.Count > 1 ? Std(values) : 0;
 
@@ -230,6 +263,7 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                     return point;
                 })
                 .ToList();
+
 
             ViewBag.Algorithm = algorithm;
             ViewBag.Suite = suite;
@@ -267,6 +301,11 @@ namespace Complex_for_analyzing_hash_functions.Controllers
 
         private static bool IsPValueMetric(string name)
         {
+            if (AdditionalTests.Contains(name))
+            {
+                return false; // Дополнительные тесты НЕ p-value
+            }
+
             return !string.Equals(name, "SAC", StringComparison.OrdinalIgnoreCase) &&
                    !string.Equals(name, "BIC", StringComparison.OrdinalIgnoreCase);
         }

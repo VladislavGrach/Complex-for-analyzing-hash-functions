@@ -310,6 +310,13 @@
         { key: "CouponCollector", title: "Coupon Collector Test", yMin: 0, yMax: 1 }
     ];
 
+    const ADDITIONAL_TESTS = [
+        { key: "ChiSquare", title: "Chi-Square", yLabel: "Значение χ²", yMin: 0, yMax: null },
+        { key: "ShannonEntropy", title: "Shannon Entropy", yLabel: "Энтропия", yMin: 0, yMax: 1 },
+        { key: "Autocorrelation", title: "Autocorrelation", yLabel: "Коэффициент автокорреляции", yMin: -1, yMax: 1 },
+        { key: "MutualInformation", title: "Mutual Information", yLabel: "Взаимная информация", yMin: 0, yMax: 1 }
+    ];
+
     // 5. Отрисовка графиков для выбранного suite
     function renderSuite(suite) {
         if (suite === "diff") {
@@ -337,11 +344,12 @@
             return;
         }
 
-        // Для NIST, Diehard, TestU01 — динамическая генерация
+        // Для NIST, Diehard, TestU01 и Additional — динамическая генерация
         const testsMap = {
             nist: { tests: NIST_TESTS, color: { line: "#2ca02c", zone: "rgba(44,160,44,0.25)" } },
             diehard: { tests: DIEHARD_TESTS, color: { line: "#9467bd", zone: "rgba(148,103,189,0.25)" } },
-            testu01: { tests: TESTU01_TESTS, color: { line: "#8c564b", zone: "rgba(140,86,75,0.25)" } }
+            testu01: { tests: TESTU01_TESTS, color: { line: "#8c564b", zone: "rgba(140,86,75,0.25)" } },
+            additional: { tests: ADDITIONAL_TESTS, color: { line: "#ff7f0e", zone: "rgba(255,127,14,0.25)" } }
         };
 
         const config = testsMap[suite];
@@ -386,7 +394,8 @@
             drawChart(
                 canvasId,
                 test.title,
-                "p-value",
+                /*"p-value",*/
+                test.yLabel || "p-value",
                 s.mean, s.upper, s.lower,
                 config.color,
                 test.yMin,

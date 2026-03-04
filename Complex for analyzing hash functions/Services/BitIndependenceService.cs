@@ -69,19 +69,15 @@ namespace Complex_for_analyzing_hash_functions.Services
                     if (anyChanged) anyDiff++;
                 }
 
-                if (anyDiff == 0)
-                {
-                    Console.WriteLine($"[BIC WARNING] Input bit {flippedInputBit} never changes output bits.");
-                }
-
                 // накапливаем корреляции
                 for (int i = 0; i < outputBits; i++)
                 {
                     for (int j = i; j < outputBits; j++)
                     {
                         double r = PearsonCorrelation(delta, i, j, experimentsPerBit);
-                        correlationSum[i, j] += r;
-                        if (i != j) correlationSum[j, i] += r;
+                        double absR = Math.Abs(r);
+                        correlationSum[i, j] += absR;
+                        if (i != j) correlationSum[j, i] += absR;
                     }
                 }
             }
