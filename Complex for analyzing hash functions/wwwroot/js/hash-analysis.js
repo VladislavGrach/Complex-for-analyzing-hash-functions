@@ -3,27 +3,46 @@
     if (!data || !data.rounds || !data.metrics) return;
 
     const rounds = data.rounds;
-    const metricsArr = data.metrics; // массив объектов: { "SAC": {Mean, Ci?, Upper?, Lower?, ...}, "BIC": {...}, ... }
-    const chartInstances = {}; // хранилище экземпляров графиков
+    const metricsArr = data.metrics;
+    const chartInstances = {};
 
-    // 1. Функция извлечения серии (mean + границы)
+    // 1. Функция извлечения серии (mean + границы) с заменой NaN на 0
     function series(name) {
-        const mean = metricsArr.map(m => (m && m[name] ? m[name].Mean : null));
+        // Получаем mean с заменой null/NaN на 0
+        const mean = metricsArr.map(m => {
+            if (!m || !m[name]) return 0;
+            const val = m[name].Mean;
+            return (val !== null && !isNaN(val)) ? val : 0;
+        });
 
-        // Предпочитаем серверные Upper/Lower, если они есть
-        const upperFromServer = metricsArr.map(m => (m && m[name] ? (m[name].Upper ?? null) : null));
-        const lowerFromServer = metricsArr.map(m => (m && m[name] ? (m[name].Lower ?? null) : null));
+        // Получаем upper/lower с сервера или из Ci
+        const upperFromServer = metricsArr.map(m => {
+            if (!m || !m[name]) return 0;
+            const val = m[name].Upper ?? null;
+            return (val !== null && !isNaN(val)) ? val : 0;
+        });
 
-        const hasBounds = upperFromServer.some(v => v !== null) && lowerFromServer.some(v => v !== null);
+        const lowerFromServer = metricsArr.map(m => {
+            if (!m || !m[name]) return 0;
+            const val = m[name].Lower ?? null;
+            return (val !== null && !isNaN(val)) ? val : 0;
+        });
+
+        const hasBounds = upperFromServer.some(v => v !== 0) && lowerFromServer.some(v => v !== 0);
 
         if (hasBounds) {
             return { mean, upper: upperFromServer, lower: lowerFromServer };
         }
 
         // Fallback: mean ± Ci
-        const ci = metricsArr.map(m => (m && m[name] ? (m[name].Ci ?? 0) : 0));
-        const upper = mean.map((v, i) => (v == null ? null : v + ci[i]));
-        const lower = mean.map((v, i) => (v == null ? null : v - ci[i]));
+        const ci = metricsArr.map(m => {
+            if (!m || !m[name]) return 0;
+            const val = m[name].Ci ?? 0;
+            return !isNaN(val) ? val : 0;
+        });
+
+        const upper = mean.map((v, i) => v + ci[i]);
+        const lower = mean.map((v, i) => v - ci[i]);
 
         return { mean, upper, lower };
     }
@@ -41,19 +60,17 @@
         }
     };
 
-    // 3. Универсальная функция отрисовки графика + кнопки экспорта
+    // 3. Универсальная функция отрисовки графика
     function drawChart(id, title, yLabel, mean, upper, lower, color, yMin = null, yMax = null, testKey = null) {
         const canvas = document.getElementById(id);
         if (!canvas) return;
 
-        // Уничтожаем предыдущий график
         if (Chart.getChart(canvas)) {
             Chart.getChart(canvas).destroy();
         }
 
-        // Удаляем старые кнопки экспорта
         const cardBody = canvas.closest(".card-body");
-        const oldButtons = cardBody.querySelector(".chart-export-buttons");
+        const oldButtons = cardBody?.querySelector(".chart-export-buttons");
         if (oldButtons) {
             oldButtons.remove();
         }
@@ -143,65 +160,52 @@
                             title: function (items) {
                                 const chart = items[0]?.chart;
                                 if (!chart) return null;
-                                const meanVisible = chart.isDatasetVisible(2);
-                                const ciVisible = chart.isDatasetVisible(1);
-                                if (!meanVisible && !ciVisible) return null;
                                 return `Количество раундов: ${items[0].label}`;
                             },
                             beforeBody: function (items) {
+                                const i = items[0].dataIndex;
                                 const chart = items[0]?.chart;
                                 if (!chart) return [];
-                                const meanVisible = chart.isDatasetVisible(2);
-                                const ciVisible = chart.isDatasetVisible(1);
-                                if (!meanVisible && !ciVisible) return [];
-                                const i = items[0].dataIndex;
+
                                 const upperVal = chart.data.datasets[0].data[i];
                                 const lowerVal = chart.data.datasets[1].data[i];
                                 const meanVal = chart.data.datasets[2].data[i];
+
                                 const fmt = (v) => Number(v).toFixed(6).replace('.', ',');
                                 const lines = [];
-                                if (meanVisible && meanVal != null) lines.push(`Среднее значение: ${fmt(meanVal)}`);
-                                if (ciVisible && upperVal != null && lowerVal != null) {
-                                    const eps = 1e-12;
-                                    const same = Math.abs(Number(upperVal) - Number(lowerVal)) < eps;
-                                    if (same) lines.push(`Граница: ${fmt(upperVal)}`);
-                                    else {
-                                        lines.push(`Верхняя граница: ${fmt(upperVal)}`);
-                                        lines.push(`Нижняя граница: ${fmt(lowerVal)}`);
-                                    }
+
+                                lines.push(`Среднее значение: ${fmt(meanVal)}`);
+                                lines.push(`Верхняя граница: ${fmt(upperVal)}`);
+                                lines.push(`Нижняя граница: ${fmt(lowerVal)}`);
+
+                                // Добавляем предупреждение, если значение было NaN и заменено на 0
+                                const originalMean = metricsArr[i]?.[testKey]?.Mean;
+                                if (originalMean === null || isNaN(originalMean)) {
+                                    lines.push(`⚠️ Значение отсутствовало! Заменено на 0`);
                                 }
+
                                 return lines;
                             },
-                            label: function () { return ''; },
-                            labelColor: function (ctx) {
-                                const chart = ctx.chart;
-                                const meanVisible = chart.isDatasetVisible(2);
-                                const ciVisible = chart.isDatasetVisible(1);
-                                if (!meanVisible && !ciVisible) {
-                                    return { borderColor: 'rgba(0,0,0,0)', backgroundColor: 'rgba(0,0,0,0)' };
-                                }
-                                if (meanVisible) {
-                                    const dsMean = chart.data.datasets[2];
-                                    const c = dsMean.backgroundColor || dsMean.borderColor;
-                                    return { borderColor: c, backgroundColor: c };
-                                }
-                                const dsCi = chart.data.datasets[1];
-                                return { borderColor: 'rgba(0,0,0,0)', backgroundColor: dsCi.backgroundColor };
-                            }
+                            label: function () { return ''; }
                         }
                     }
                 },
                 scales: {
                     x: { title: { display: true, text: 'Число раундов' } },
-                    y: { min: yMin, max: yMax, title: { display: true, text: yLabel }, ticks: { stepSize: 0.2 } }
+                    y: {
+                        min: yMin,
+                        max: yMax,
+                        title: { display: true, text: yLabel },
+                        ticks: { stepSize: 0.2 },
+                        beginAtZero: true
+                    }
                 }
             }
         });
 
-        // Сохраняем экземпляр
         chartInstances[id] = chart;
 
-        // Кнопки экспорта под графиком
+        // Кнопки экспорта
         const btnGroup = document.createElement("div");
         btnGroup.className = "d-flex gap-2 mt-3 flex-wrap chart-export-buttons";
 
@@ -209,9 +213,10 @@
         csvBtn.className = "btn btn-outline-secondary btn-sm";
         csvBtn.textContent = "Экспорт CSV";
         csvBtn.onclick = () => {
-            let csv = "Раунд,Среднее,Верхняя граница,Нижняя граница\n";
+            let csv = "Раунд,Среднее,Верхняя граница,Нижняя граница,Исходное значение было NaN\n";
             rounds.forEach((r, i) => {
-                csv += `${r},${mean[i] ?? ""},${upper[i] ?? ""},${lower[i] ?? ""}\n`;
+                const wasNaN = metricsArr[i]?.[testKey]?.Mean === null || isNaN(metricsArr[i]?.[testKey]?.Mean);
+                csv += `${r},${mean[i]},${upper[i]},${lower[i]},${wasNaN ? 'Да' : 'Нет'}\n`;
             });
             const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
             const url = URL.createObjectURL(blob);
@@ -226,14 +231,18 @@
         jsonBtn.className = "btn btn-outline-secondary btn-sm";
         jsonBtn.textContent = "Экспорт JSON";
         jsonBtn.onclick = () => {
+            // В JSON сохраняем исходные значения с информацией о NaN
+            const originalMean = metricsArr.map(m => m?.[testKey]?.Mean ?? null);
             const exportData = {
                 algorithm: window.currentAlgorithm,
                 suite: document.querySelector('input[name="suiteRadio"]:checked')?.value || 'diff',
                 test: testKey || title,
                 rounds: rounds,
-                mean: mean,
+                mean_displayed: mean,
+                mean_original: originalMean,
                 upper: upper,
-                lower: lower
+                lower: lower,
+                note: "Значения 0 означают, что исходное значение было NaN (тест не удался)"
             };
             const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
@@ -258,7 +267,9 @@
         btnGroup.appendChild(jsonBtn);
         btnGroup.appendChild(pngBtn);
 
-        canvas.closest(".card-body").appendChild(btnGroup);
+        if (cardBody) {
+            cardBody.appendChild(btnGroup);
+        }
     }
 
     // 4. Константы тестов
@@ -269,45 +280,45 @@
     };
 
     const NIST_TESTS = [
-        { key: "Monobit", title: "Monobit Test", yMin: 0, yMax: 1 },
-        { key: "FrequencyWithinBlock", title: "Frequency Within Block", yMin: 0, yMax: 1 },
-        { key: "Runs", title: "Runs Test", yMin: 0, yMax: 1 },
-        { key: "LongestRunOfOnes", title: "Longest Run of Ones", yMin: 0, yMax: 1 },
-        { key: "BinaryMatrixRank", title: "Binary Matrix Rank", yMin: 0, yMax: 1 },
-        { key: "DiscreteFourier", title: "Discrete Fourier Transform", yMin: 0, yMax: 1 },
-        { key: "NonOverlappingTemplate", title: "Non-overlapping Template", yMin: 0, yMax: 1 },
-        { key: "OverlappingTemplate", title: "Overlapping Template", yMin: 0, yMax: 1 },
-        { key: "MaurerUniversal", title: "Maurer Universal", yMin: 0, yMax: 1 },
-        { key: "LempelZiv", title: "Lempel-Ziv", yMin: 0, yMax: 1 },
-        { key: "LinearComplexity", title: "Linear Complexity", yMin: 0, yMax: 1 },
-        { key: "Serial", title: "Serial Test", yMin: 0, yMax: 1 },
-        { key: "ApproximateEntropy", title: "Approximate Entropy", yMin: 0, yMax: 1 },
-        { key: "Cusum", title: "Cumulative Sums", yMin: 0, yMax: 1 },
-        { key: "RandomExcursions", title: "Random Excursions", yMin: 0, yMax: 1 },
-        { key: "RandomExcursionsVariant", title: "Random Excursions Variant", yMin: 0, yMax: 1 }
+        { key: "Monobit", title: "Monobit Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "FrequencyWithinBlock", title: "Frequency Within Block", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Runs", title: "Runs Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "LongestRunOfOnes", title: "Longest Run of Ones", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "BinaryMatrixRank", title: "Binary Matrix Rank", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "DiscreteFourier", title: "Discrete Fourier Transform", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "NonOverlappingTemplate", title: "Non-overlapping Template", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "OverlappingTemplate", title: "Overlapping Template", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "MaurerUniversal", title: "Maurer Universal", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "LempelZiv", title: "Lempel-Ziv", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "LinearComplexity", title: "Linear Complexity", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Serial", title: "Serial Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "ApproximateEntropy", title: "Approximate Entropy", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Cusum", title: "Cumulative Sums", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "RandomExcursions", title: "Random Excursions", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "RandomExcursionsVariant", title: "Random Excursions Variant", yLabel: "p-value", yMin: 0, yMax: 1 }
     ];
 
     const DIEHARD_TESTS = [
-        { key: "BirthdaySpacings", title: "Birthday Spacings Test", yMin: 0, yMax: 1 },
-        { key: "CountOnes", title: "Count Ones Test", yMin: 0, yMax: 1 },
-        { key: "MatrixRanks", title: "Matrix Ranks Test", yMin: 0, yMax: 1 },
-        { key: "OverlappingPermutations", title: "Overlapping Permutations Test", yMin: 0, yMax: 1 },
-        { key: "RunsDiehard", title: "Runs Test", yMin: 0, yMax: 1 },
-        { key: "GcdDiehard", title: "GCD Test", yMin: 0, yMax: 1 },
-        { key: "SqueezeDiehard", title: "Squeeze Test", yMin: 0, yMax: 1 },
-        { key: "CrapsDiehard", title: "Craps Test", yMin: 0, yMax: 1 }
+        { key: "BirthdaySpacings", title: "Birthday Spacings Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "CountOnes", title: "Count Ones Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "MatrixRanks", title: "Matrix Ranks Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "OverlappingPermutations", title: "Overlapping Permutations Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "RunsDiehard", title: "Runs Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Gcd", title: "GCD Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Squeeze", title: "Squeeze Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Craps", title: "Craps Test", yLabel: "p-value", yMin: 0, yMax: 1 }
     ];
 
     const TESTU01_TESTS = [
-        { key: "Collision", title: "Collision Test", yMin: 0, yMax: 1 },
-        { key: "Gap", title: "Gap Test", yMin: 0, yMax: 1 },
-        { key: "Autocorrelation", title: "Autocorrelation Test", yMin: 0, yMax: 1 },
-        { key: "Spectral", title: "Spectral Test", yMin: 0, yMax: 1 },
-        { key: "HammingWeight", title: "Hamming Weight Test", yMin: 0, yMax: 1 },
-        { key: "SerialTest", title: "Serial Test (TestU01)", yMin: 0, yMax: 1 },
-        { key: "MultinomialTest", title: "Multinomial Test", yMin: 0, yMax: 1 },
-        { key: "ClosePairs", title: "Close Pairs Test", yMin: 0, yMax: 1 },
-        { key: "CouponCollector", title: "Coupon Collector Test", yMin: 0, yMax: 1 }
+        { key: "Collision", title: "Collision Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Gap", title: "Gap Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Autocorrelation", title: "Autocorrelation Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Spectral", title: "Spectral Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "HammingWeight", title: "Hamming Weight Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "SerialTest", title: "Serial Test (TestU01)", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "MultinomialTest", title: "Multinomial Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "ClosePairs", title: "Close Pairs Test", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "CouponCollector", title: "Coupon Collector Test", yLabel: "p-value", yMin: 0, yMax: 1 }
     ];
 
     const ADDITIONAL_TESTS = [
@@ -317,7 +328,7 @@
         { key: "MutualInformation", title: "Mutual Information", yLabel: "Взаимная информация", yMin: 0, yMax: 1 }
     ];
 
-    // 5. Отрисовка графиков для выбранного suite
+    // 5. Отрисовка графиков
     function renderSuite(suite) {
         if (suite === "diff") {
             const sac = series("SAC");
@@ -344,7 +355,6 @@
             return;
         }
 
-        // Для NIST, Diehard, TestU01 и Additional — динамическая генерация
         const testsMap = {
             nist: { tests: NIST_TESTS, color: { line: "#2ca02c", zone: "rgba(44,160,44,0.25)" } },
             diehard: { tests: DIEHARD_TESTS, color: { line: "#9467bd", zone: "rgba(148,103,189,0.25)" } },
@@ -358,7 +368,7 @@
         const container = document.getElementById(`${suite}Charts`);
         if (!container) return;
 
-        container.innerHTML = ""; // очищаем перед перерисовкой
+        container.innerHTML = "";
 
         config.tests.forEach(test => {
             const col = document.createElement("div");
@@ -394,8 +404,7 @@
             drawChart(
                 canvasId,
                 test.title,
-                /*"p-value",*/
-                test.yLabel || "p-value",
+                test.yLabel,
                 s.mean, s.upper, s.lower,
                 config.color,
                 test.yMin,
@@ -411,25 +420,21 @@
             group.style.display = (group.dataset.suite === suite) ? "block" : "none";
         });
 
-        // Обновляем URL
         const url = new URL(window.location.href);
         url.searchParams.set("suite", suite);
         window.history.replaceState({}, "", url);
 
-        // Рисуем графики (важно — после показа блока!)
         renderSuite(suite);
     }
 
-    // Инициализация при загрузке
+    // Инициализация
     let currentSuite = (new URL(window.location.href).searchParams.get("suite") || "diff").toLowerCase();
 
-    // Синхронизируем радио-кнопку
     const initialRadio = document.querySelector(`input[name="suiteRadio"][value="${currentSuite}"]`);
     if (initialRadio) initialRadio.checked = true;
 
     showSuite(currentSuite);
 
-    // Слушатель переключения радио
     document.querySelectorAll('input[name="suiteRadio"]').forEach(radio => {
         radio.addEventListener("change", function () {
             currentSuite = this.value;
@@ -437,7 +442,7 @@
         });
     });
 
-    // 7. Смена алгоритма → отправка GET-запроса
+    // Смена алгоритма
     const algorithmSelect = document.getElementById("algorithmSelect");
     if (algorithmSelect) {
         algorithmSelect.addEventListener("change", function () {
@@ -449,7 +454,6 @@
                 form.style.display = "none";
                 document.body.appendChild(form);
 
-                // Копируем текущие параметры (suite и т.д.)
                 const params = new URLSearchParams(window.location.search);
                 for (const [key, value] of params) {
                     if (key !== "algorithm") {
@@ -462,7 +466,6 @@
                 }
             }
 
-            // Добавляем/обновляем algorithm
             let input = form.querySelector('input[name="algorithm"]');
             if (!input) {
                 input = document.createElement("input");

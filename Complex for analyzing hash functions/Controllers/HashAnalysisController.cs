@@ -49,9 +49,9 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             "MatrixRanks",
             "OverlappingPermutations",
             "RunsDiehard",
-            "GcdDiehard",
-            "SqueezeDiehard",
-            "CrapsDiehard"
+            "Gcd",
+            "Squeeze",
+            "Craps"
         };
 
         static readonly string[] TestU01Tests =

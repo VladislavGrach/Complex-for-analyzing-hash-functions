@@ -289,8 +289,8 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                     RunsDiehard = runsDiehardList.Any() ? runsDiehardList.Average() : double.NaN,
                     Squeeze = squeezeList.Any() ? squeezeList.Average() : double.NaN,
                     MatrixRanks = rankList.Any() ? rankList.Average() : double.NaN,
-                    GcdDiehard = gcdList.Any() ? gcdList.Average() : double.NaN,
-                    CrapsDiehard = crapsList.Any() ? crapsList.Average() : double.NaN
+                    Gcd = gcdList.Any() ? gcdList.Average() : double.NaN,
+                    Craps = crapsList.Any() ? crapsList.Average() : double.NaN
                 },
                 TestU01 = new
                 {

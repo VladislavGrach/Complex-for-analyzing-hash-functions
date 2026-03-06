@@ -57,9 +57,9 @@
                 MatrixRanks: { title: "Matrix Ranks", isPValue: true },
                 OverlappingPermutations: { title: "Overlapping Permutations", isPValue: true },
                 RunsDiehard: { title: "Runs Test", isPValue: true },
-                GcdDiehard: { title: "GCD Test", isPValue: true },
-                SqueezeDiehard: { title: "Squeeze Test", isPValue: true },
-                CrapsDiehard: { title: "Craps Test", isPValue: true }
+                Gcd: { title: "GCD Test", isPValue: true },
+                Squeeze: { title: "Squeeze Test", isPValue: true },
+                Craps: { title: "Craps Test", isPValue: true }
             }
         },
         testu01: {
