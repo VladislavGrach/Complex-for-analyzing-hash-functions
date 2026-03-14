@@ -315,7 +315,7 @@
         { key: "Autocorrelation", title: "Autocorrelation Test", yLabel: "p-value", yMin: 0, yMax: 1 },
         { key: "Spectral", title: "Spectral Test", yLabel: "p-value", yMin: 0, yMax: 1 },
         { key: "HammingWeight", title: "Hamming Weight Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "SerialTest", title: "Serial Test (TestU01)", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "SerialTest", title: "Serial Test", yLabel: "p-value", yMin: 0, yMax: 1 },
         { key: "MultinomialTest", title: "Multinomial Test", yLabel: "p-value", yMin: 0, yMax: 1 },
         { key: "ClosePairs", title: "Close Pairs Test", yLabel: "p-value", yMin: 0, yMax: 1 },
         { key: "CouponCollector", title: "Coupon Collector Test", yLabel: "p-value", yMin: 0, yMax: 1 }
@@ -324,7 +324,7 @@
     const ADDITIONAL_TESTS = [
         { key: "ChiSquare", title: "Chi-Square", yLabel: "Значение χ²", yMin: 0, yMax: null },
         { key: "ShannonEntropy", title: "Shannon Entropy", yLabel: "Энтропия", yMin: 0, yMax: 1 },
-        { key: "Autocorrelation", title: "Autocorrelation", yLabel: "Коэффициент автокорреляции", yMin: -1, yMax: 1 },
+        { key: "Autocorrelation", title: "Autocorrelation", yLabel: "Коэффициент автокорреляции", yMin: -0.2, yMax: 0.2 },
         { key: "MutualInformation", title: "Mutual Information", yLabel: "Взаимная информация", yMin: 0, yMax: 1 }
     ];
 

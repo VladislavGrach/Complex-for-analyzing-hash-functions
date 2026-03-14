@@ -17,9 +17,6 @@ builder.Services.AddSingleton<ITestU01Service, TestU01Service>();
 builder.Services.AddScoped<IAvalancheService, AvalancheService>();
 builder.Services.AddScoped<IBitIndependenceService, BitIndependenceService>();
 
-
-
-
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 

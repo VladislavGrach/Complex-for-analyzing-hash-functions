@@ -1,16 +1,10 @@
-﻿// File: Helpers/JsonUtils.cs
-using System;
+﻿using System;
 using System.Text.Json;
 
 namespace Complex_for_analyzing_hash_functions.Helpers
 {
     public static class JsonUtils
     {
-        /// <summary>
-        /// Возвращает JsonElement-объект. Если источник - объект, возвращается он.
-        /// Если источник - массив, пытаемся взять первый элемент-объект.
-        /// Если в массиве нет объектов, оборачиваем массив в объект { "RawArray": [...] }.
-        /// </summary>
         public static JsonElement NormalizeToObject(JsonElement json)
         {
             if (json.ValueKind == JsonValueKind.Object)

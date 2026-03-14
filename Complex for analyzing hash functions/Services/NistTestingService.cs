@@ -878,19 +878,74 @@ namespace The_complex_of_testing_hash_functions.Services
         }
 
         // Γ(s, x) — нижняя неполная гамма-функция
-        public double GammaLowerIncomplete(double s, double x)
+        public double GammaLowerIncomplete(double a, double x)
         {
-            double sum = 0.0;
-            double term = 1.0 / s;
-            double n = 0;
-            while (term > 1e-15)
+            const double EPS = 1e-14;
+            const double FPMIN = 1e-300;
+            const int MAXIT = 1000;
+
+            if (x < 0 || a <= 0) throw new ArgumentOutOfRangeException();
+
+            if (x == 0) return 0.0;
+
+            // Для маленьких x используем ряд
+            if (x < a + 1)
             {
-                sum += term;
-                n++;
-                term *= x / (s + n);
+                double ap = a;
+                double sum = 1.0 / a;
+                double del = sum;
+                for (int n = 1; n <= MAXIT; n++)
+                {
+                    ap += 1;
+                    del *= x / ap;
+                    sum += del;
+                    if (Math.Abs(del) < Math.Abs(sum) * EPS)
+                        return sum * Math.Exp(-x + a * Math.Log(x) - GammaLn(a));
+                }
+                throw new Exception("Слишком много итераций в ряде");
             }
 
-            return Math.Pow(x, s) * Math.Exp(-x) * sum;
+            // Для больших x — continued fraction (Lentz's method)
+            double b = x + 1 - a;
+            double c = 1 / FPMIN;
+            double d = 1 / b;
+            double h = d;
+
+            for (int i = 1; i <= MAXIT; i++)
+            {
+                double an = -i * (i - a);
+                b += 2;
+                d = an * d + b;
+                if (Math.Abs(d) < FPMIN) d = FPMIN;
+                c = b + an / c;
+                if (Math.Abs(c) < FPMIN) c = FPMIN;
+                d = 1 / d;
+                double del = d * c;
+                h *= del;
+                if (Math.Abs(del - 1) < EPS) break;
+            }
+
+            return 1 - Math.Exp(-x + a * Math.Log(x) - GammaLn(a)) * h;
+        }
+
+        // Нужна ln(Γ(a)) — логарифм гамма-функции (Lanczos approximation)
+        private static double GammaLn(double x)
+        {
+            const double coef0 = 76.18009172947146;
+            const double coef1 = -86.50532032941677;
+            const double coef2 = 24.01409824083091;
+            const double coef3 = -1.231739572450155;
+            const double coef4 = 0.1208650973866179e-2;
+            const double coef5 = -0.5395239384953e-5;
+
+            double y = x;
+            double tmp = x + 5.5;
+            tmp = (x + 0.5) * Math.Log(tmp) - tmp;
+            double ser = 1.000000000190015 +
+                         coef0 / (y + 1) + coef1 / (y + 2) + coef2 / (y + 3) +
+                         coef3 / (y + 4) + coef4 / (y + 5) + coef5 / (y + 6);
+
+            return tmp + Math.Log(2.5066282746310005 * ser / x);
         }
 
         // Γ(s) — гамма-функция через ланцос-аппроксимацию
