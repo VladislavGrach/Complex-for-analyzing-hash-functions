@@ -352,7 +352,7 @@ namespace Complex_for_analyzing_hash_functions.Controllers
         }
 
         public IActionResult Compare(
-            int rounds = 8,
+            int rounds = 7,
             string suite = "diff",
             string metric = "SAC")
         {
