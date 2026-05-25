@@ -71,12 +71,12 @@
 
 .stats-item {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    justify-content: flex-start;
+    align-items: center;
     padding: 0.5rem 0;
     border-bottom: 1px solid #f1f5f9;
     font-size: 0.85rem;
-    gap: 1.25rem;
+    gap: 1.5rem;
 }
 
     .stats-item:last-child {
@@ -86,10 +86,10 @@
 .stats-label {
     font-weight: 500;
     color: #334155;
-    flex: 0 0 200px;
-    min-width: 200px;
-    max-width: 240px;
+    flex: 0 0 280px;
+    min-width: 180px;
     text-align: left;
+    padding-right: 1rem;
 }
 
 .stats-value {

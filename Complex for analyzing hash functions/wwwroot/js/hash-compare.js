@@ -24,84 +24,84 @@
         diff: {
             label: "SAC / BIC",
             tests: {
-                SAC: { title: "Avalanche Effect (SAC)", yLabel: "Доля изменённых битов", isPValue: false },
-                BIC: { title: "Bit Independence Criterion (BIC)", yLabel: "Максимальная корреляция", isPValue: false }
+                SAC: { title: "Строгий лавинный критерий (SAC)", yLabel: "Доля изменённых битов", isPValue: false },
+                BIC: { title: "Критерий независимости битов (BIC)", yLabel: "Максимальная корреляция", isPValue: false }
             }
         },
         nist: {
             label: "NIST",
             tests: {
-                Monobit: { title: "Monobit Test", isPValue: true },
-                FrequencyWithinBlock: { title: "Frequency Within Block", isPValue: true },
-                Runs: { title: "Runs Test", isPValue: true },
-                LongestRunOfOnes: { title: "Longest Run of Ones", isPValue: true },
-                BinaryMatrixRank: { title: "Binary Matrix Rank", isPValue: true },
-                DiscreteFourier: { title: "Discrete Fourier Transform", isPValue: true },
-                NonOverlappingTemplate: { title: "Non-overlapping Template", isPValue: true },
-                OverlappingTemplate: { title: "Overlapping Template", isPValue: true },
-                MaurerUniversal: { title: "Maurer Universal", isPValue: true },
-                LempelZiv: { title: "Lempel-Ziv", isPValue: true },
-                LinearComplexity: { title: "Linear Complexity", isPValue: true },
-                Serial: { title: "Serial Test", isPValue: true },
-                ApproximateEntropy: { title: "Approximate Entropy", isPValue: true },
-                Cusum: { title: "Cumulative Sums", isPValue: true },
-                RandomExcursions: { title: "Random Excursions", isPValue: true },
-                RandomExcursionsVariant: { title: "Random Excursions Variant", isPValue: true }
+                Monobit: { title: "Частотный побитовый тест", isPValue: true },
+                FrequencyWithinBlock: { title: "Частотный блочный тест", isPValue: true },
+                Runs: { title: "Тест на последовательность одинаковых бит", isPValue: true },
+                LongestRunOfOnes: { title: "Тест на самую длинную последовательность единиц в блоке", isPValue: true },
+                BinaryMatrixRank: { title: "Тест рангов бинарных матриц", isPValue: true },
+                DiscreteFourier: { title: "Спектральный тест", isPValue: true },
+                NonOverlappingTemplate: { title: "Тест на совпадение непересекающихся шаблонов", isPValue: true },
+                OverlappingTemplate: { title: "Тест на совпадение пересекающихся шаблонов", isPValue: true },
+                MaurerUniversal: { title: "Универсальный статистический тест Маурера ", isPValue: true },
+                LempelZiv: { title: "Тест сжатия Лемпеля-Зива", isPValue: true },
+                LinearComplexity: { title: "Тест на линейную сложность", isPValue: true },
+                Serial: { title: "Тест на периодичность", isPValue: true },
+                ApproximateEntropy: { title: "Тест приближённой энтропии", isPValue: true },
+                Cusum: { title: "Тест кумулятивных сумм", isPValue: true },
+                RandomExcursions: { title: "Тест случайных блужданий", isPValue: true },
+                RandomExcursionsVariant: { title: "Модифицированный тест случайных блужданий", isPValue: true }
             }
         },
         diehard: {
             label: "Diehard",
             tests: {
-                BirthdaySpacings: { title: "Birthday Spacings", isPValue: true },
-                CountOnes: { title: "Count Ones", isPValue: true },
-                MatrixRanks: { title: "Matrix Ranks", isPValue: true },
-                OverlappingPermutations: { title: "Overlapping Permutations", isPValue: true },
-                RunsDiehard: { title: "Runs Test", isPValue: true },
-                Gcd: { title: "GCD Test", isPValue: true },
-                Squeeze: { title: "Squeeze Test", isPValue: true },
-                Craps: { title: "Craps Test", isPValue: true }
+                BirthdaySpacings: { title: "Тест распределения дней рождения", isPValue: true },
+                CountOnes: { title: "Тест подсчёта единиц", isPValue: true },
+                MatrixRanks: { title: "Тест рангов матриц", isPValue: true },
+                OverlappingPermutations: { title: "Тест на пересекающиеся перестановки", isPValue: true },
+                RunsDiehard: { title: "Тест на серии", isPValue: true },
+                Gcd: { title: "Тест наибольшего общего делителя", isPValue: true },
+                Squeeze: { title: "Тест сжатия", isPValue: true },
+                Craps: { title: "Тест игры в крэпс", isPValue: true }
             }
         },
         testu01: {
             label: "TestU01",
             tests: {
-                Collision: { title: "Collision", isPValue: true },
-                Gap: { title: "Gap", isPValue: true },
-                Autocorrelation: { title: "Autocorrelation", isPValue: true },
-                Spectral: { title: "Spectral", isPValue: true },
-                HammingWeight: { title: "Hamming Weight", isPValue: true },
-                SerialTest: { title: "Serial Test", isPValue: true },
-                MultinomialTest: { title: "Multinomial Test", isPValue: true },
-                ClosePairs: { title: "Close Pairs", isPValue: true },
-                CouponCollector: { title: "Coupon Collector", isPValue: true }
+                Collision: { title: "Тест на коллизии", isPValue: true },
+                Gap: { title: "Тест на промежутки", isPValue: true },
+                Autocorrelation: { title: "Тест автокорреляции", isPValue: true },
+                Spectral: { title: "Спектральный тест", isPValue: true },
+                HammingWeight: { title: "Тест веса Хэмминга", isPValue: true },
+                SerialTest: { title: "Серийный тест", isPValue: true },
+                MultinomialTest: { title: "Мультиномиальный тест", isPValue: true },
+                ClosePairs: { title: "Тест близких пар", isPValue: true },
+                CouponCollector: { title: "Тест коллекционера купонов", isPValue: true }
             }
         },
         additional: {
-            label: "Additional Statistics",
+            label: "Статистические характеристики",
             tests: {
                 ChiSquare: {
-                    title: "Chi-Square Test",
+                    title: "Критерий χ²",
                     yLabel: "Значение χ²",
                     isPValue: false,
                     yMin: 0,
                     yMax: null // авто-масштабирование
                 },
                 ShannonEntropy: {
-                    title: "Shannon Entropy",
+                    title: "Энтропия Шеннона",
                     yLabel: "Энтропия",
                     isPValue: false,
                     yMin: 0,
                     yMax: 1
                 },
                 Autocorrelation: {
-                    title: "Autocorrelation",
+                    title: "Автокорреляция",
                     yLabel: "Коэффициент автокорреляции",
                     isPValue: false,
                     yMin: -1,
                     yMax: 1
                 },
                 MutualInformation: {
-                    title: "Mutual Information",
+                    title: "Взаимная информация",
                     yLabel: "Взаимная информация",
                     isPValue: false,
                     yMin: 0,
@@ -211,30 +211,58 @@
             effectiveYMax = Math.ceil(maxValue * 1.1); // +10% и округляем вверх
         }
 
-        // Если график уже существует - обновляем его данные
+        // Если график уже существует — обновляем его
         if (chart) {
-            // Обновляем данные
+
             chart.data.labels = algorithmsData;
+
             chart.data.datasets[0].data = meanData;
+
+            chart.data.datasets[0].label =
+                testCfg.isPValue
+                    ? "p-value" : testCfg.yLabel;
+
             chart.data.datasets[0].backgroundColor = meanData.map(v =>
-                testCfg.isPValue && v < 0.01 ? "#d62728" : "#1f77b4"
+                testCfg.isPValue && v < 0.01
+                    ? "#d62728"
+                    : "#1f77b4"
             );
 
-            // Обновляем заголовок и подписи осей
-            chart.options.plugins.title.text = `Сравнение алгоритмов — ${suiteCfg.label}: ${testCfg.title}`;
-            chart.options.scales.y.title.text = testCfg.isPValue ? "p-value" : testCfg.yLabel;
+            // Заголовок
+            chart.options.plugins.title.text =
+                `${suiteCfg.label}: ${testCfg.title}`;
 
-            // Устанавливаем мин/макс в зависимости от теста
+            // Ось Y
+            chart.options.scales.y.title.text =
+                testCfg.isPValue
+                    ? "p-value"
+                    : testCfg.yLabel;
+
             chart.options.scales.y.min = yMin;
             chart.options.scales.y.max = effectiveYMax;
 
-            // Для авто-масштабирования убираем принудительный пересчет
-            if (testCfg.yMax === null) {
-                // Удаляем afterDataLimits, если он был добавлен
-                delete chart.options.scales.y.afterDataLimits;
+            // ticks
+            if (effectiveYMax > 10) {
+                chart.options.scales.y.ticks = {
+                    callback: (v) =>
+                        Number.isInteger(v) ? v : v.toFixed(0),
+                    stepSize: Math.ceil(effectiveYMax / 10)
+                };
+            }
+            else if (effectiveYMax <= 1) {
+                chart.options.scales.y.ticks = {
+                    stepSize: 0.1,
+                    callback: (v) => v.toFixed(1)
+                };
+            }
+            else {
+                chart.options.scales.y.ticks = {
+                    callback: (v) => v.toFixed(2)
+                };
             }
 
             chart.update();
+
             return;
         }
 
@@ -279,7 +307,7 @@
             data: {
                 labels: algorithmsData,
                 datasets: [{
-                    label: "Среднее значение",
+                    label: testCfg.isPValue ? "p-value" : testCfg.yLabel,
                     data: meanData,
                     backgroundColor: colors,
                     borderRadius: 6,
@@ -290,7 +318,14 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false },
+                    /*legend: { display: false },*/
+                    legend: {
+                        position: "bottom",
+                        labels: {
+                            usePointStyle: true,
+                            pointStyle: "circle"
+                        }
+                    },
                     title: {
                         display: true,
                         text: `Сравнение алгоритмов — ${suiteCfg.label}: ${testCfg.title}`,
@@ -303,13 +338,9 @@
                                 const v = ctx.parsed.y;
                                 if (testCfg.isPValue) {
                                     return v < 0.01
-                                        ? `p-value: ${v.toExponential(2)} (FAIL)`
-                                        : `p-value: ${v.toFixed(4)}`;
+                                        ? `p-value: ${v.toExponential(2)} (ТЕСТ НЕ ПРОЙДЕН)`
+                                        : `p-value: ${v.toFixed(6)}`;
                                 } else {
-                                    // Для Chi-Square используем формат с 2 знаками после запятой
-                                    if (suite === "additional" && metric === "ChiSquare") {
-                                        return `Значение: ${v.toFixed(2)}`;
-                                    }
                                     return `Значение: ${v.toFixed(6)}`;
                                 }
                             }
@@ -400,9 +431,30 @@
 
     // ---------- init ----------
     const initState = normalizeStateFromUrl();
+
     syncSuiteRadios(initState.suite);
     fillMetricSelect(initState.suite, initState.metric);
-    drawChart(initState.suite, initState.metric);
+
+    // INITIAL FETCH
+    (async () => {
+        try {
+            const data = await fetchCompareData(
+                initState.suite,
+                initState.metric,
+                getRounds()
+            );
+
+            if (data?.algorithms && data?.mean) {
+                algorithmsData = data.algorithms;
+                meanData = data.mean;
+            }
+
+            drawChart(initState.suite, initState.metric);
+        }
+        catch (e) {
+            console.error("Ошибка initial load:", e);
+        }
+    })();
 
     // ---------- listeners ----------
     metricSelect.addEventListener("change", () => {
@@ -423,24 +475,61 @@
         });
     }
 
+    // Загрузка локализации тестов
+    const localizationElement = document.getElementById('test-localization-data');
+    const testLocalization = localizationElement ? JSON.parse(localizationElement.textContent) : {};
+
+    // Функция получения русского названия теста
+    function getLocalizedTestName(suite, metricKey) {
+        if (!testLocalization) return metricKey;
+
+        const suiteMap = {
+            'nist': testLocalization.nist,
+            'diehard': testLocalization.diehard,
+            'testu01': testLocalization.testu01,
+            'additional': testLocalization.additional
+        };
+
+        if (suite === 'diff') {
+            if (metricKey === 'SAC') {
+                return testLocalization.sac?.['MeanFlipRate'] || "Строгий лавинный критерий";
+            }
+            if (metricKey === 'BIC') {
+                return testLocalization.bic?.['MaxCorrelationAbs'] || "Критерий независимости битов";
+            }
+            return metricKey;
+        }
+
+        const map = suiteMap[suite];
+        if (map && map[metricKey]) {
+            return map[metricKey];
+        }
+        return metricKey;
+    }
+
     // Обработчики для кнопок экспорта
     document.getElementById("exportCsvBtn")?.addEventListener("click", () => {
         const rounds = getRounds();
         const suite = getCheckedSuite();
         const metric = metricSelect.value;
 
+        // Получаем русское название теста
+        const metricName = getLocalizedTestName(suite, metric);
+
         // Формируем CSV
-        let csv = "Алгоритм,Значение\n";
+        let csv = "Алгоритм;Значение\n";
         for (let i = 0; i < algorithmsData.length; i++) {
-            csv += `${algorithmsData[i]},${meanData[i]}\n`;
+            csv += `${algorithmsData[i]};${meanData[i]}\n`;
         }
+        // Заменяем точку на запятую для Excel
+        csv = csv.replace(/\./g, ',');
 
         // Скачиваем файл
-        const blob = new Blob([csv], { type: 'text/csv' });
+        const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `compare_${suite}_${metric}_${rounds}_rounds.csv`;
+        a.download = `Сравнение. ${metricName} ${rounds} раундов.csv`;
         a.click();
         URL.revokeObjectURL(url);
     });
@@ -450,13 +539,16 @@
         const suite = getCheckedSuite();
         const metric = metricSelect.value;
 
+        // Получаем русское название теста
+        const metricName = getLocalizedTestName(suite, metric);
+
         // Формируем JSON
         const data = {
-            suite: suite,
-            metric: metric,
-            rounds: rounds,
-            algorithms: algorithmsData,
-            values: meanData
+            "Набор тестов": suite === 'diff' ? "Дифференциальные тесты" : suite,
+            "Тест": metricName,
+            "Количество раундов": rounds,
+            "Алгоритмы": algorithmsData,
+            "Значения": meanData
         };
 
         // Скачиваем файл
@@ -468,7 +560,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `compare_${suite}_${metric}_${rounds}_rounds.json`;
+        a.download = `Сравнение. ${metricName} ${rounds} раундов.json`;
         a.click();
         URL.revokeObjectURL(url);
     });
@@ -479,6 +571,9 @@
         const rounds = getRounds();
         const suite = getCheckedSuite();
         const metric = metricSelect.value;
+
+        // Получаем русское название теста
+        const metricName = getLocalizedTestName(suite, metric);
 
         const canvas = chart.canvas;
         const ctx = canvas.getContext("2d");
@@ -499,7 +594,7 @@
 
         const a = document.createElement("a");
         a.href = url;
-        a.download = `compare_${suite}_${metric}_${rounds}_rounds.png`;
+        a.download = `Сравнение. ${metricName} ${rounds} раундов.png`;
         a.click();
     });
 });

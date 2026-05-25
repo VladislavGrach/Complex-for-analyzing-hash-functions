@@ -1,6 +1,7 @@
 ﻿using Complex_for_analyzing_hash_functions.Data;
 using Complex_for_analyzing_hash_functions.Helpers;
 using Complex_for_analyzing_hash_functions.Models;
+using Complex_for_analyzing_hash_functions.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
 using System.Text;
@@ -92,7 +93,12 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                 {
                     foreach (var test in NistTests)
                     {
-                        if (nist.TryGetProperty(test, out var v))
+                        var localized =
+                            TestLocalization.Nist.ContainsKey(test)
+                                ? TestLocalization.Nist[test]
+                                : test;
+
+                        if (nist.TryGetProperty(localized, out var v))
                         {
                             metrics[test] = GetDoubleSafe(v);
                         }
@@ -108,7 +114,12 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                 {
                     foreach (var test in DiehardTests)
                     {
-                        if (diehard.TryGetProperty(test, out var v))
+                        var localized =
+                            TestLocalization.Diehard.ContainsKey(test)
+                                ? TestLocalization.Diehard[test]
+                                : test;
+
+                        if (diehard.TryGetProperty(localized, out var v))
                         {
                             metrics[test] = GetDoubleSafe(v);
                         }
@@ -124,7 +135,12 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                 {
                     foreach (var test in TestU01Tests)
                     {
-                        if (testu01.TryGetProperty(test, out var v))
+                        var localized =
+                            TestLocalization.TestU01.ContainsKey(test)
+                                ? TestLocalization.TestU01[test]
+                                : test;
+
+                        if (testu01.TryGetProperty(localized, out var v))
                         {
                             metrics[test] = GetDoubleSafe(v);
                         }
@@ -136,21 +152,29 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                 }
 
                 // === SAC ===
-                if (root.TryGetProperty("Avalanche", out var a) &&
-                    a.TryGetProperty("MeanFlipRate", out var sac))
+                if (root.TryGetProperty("SAC", out var a) &&
+                    a.TryGetProperty(TestLocalization.SAC["MeanFlipRate"], out var sac))
                 {
                     metrics["SAC"] = GetDoubleSafe(sac);
                 }
 
                 // === BIC ===
                 if (root.TryGetProperty("BIC", out var b) &&
-                    b.TryGetProperty("MaxCorrelationAbs", out var bic))
+                    b.TryGetProperty(TestLocalization.BIC["MaxCorrelationAbs"], out var bic))
                 {
                     metrics["BIC"] = GetDoubleSafe(bic);
                 }
 
                 // === Additional Statistics ===
-                if (root.TryGetProperty("AdditionalStatistics", out var additional))
+                JsonElement additional;
+                bool hasAdditional = root.TryGetProperty("Статистические характеристики", out additional);
+
+                if (!hasAdditional)
+                {
+                    hasAdditional = root.TryGetProperty("AdditionalStatistics", out additional);
+                }
+
+                if (hasAdditional)
                 {
                     var additionalDict = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
                     foreach (var prop in additional.EnumerateObject())
@@ -160,9 +184,19 @@ namespace Complex_for_analyzing_hash_functions.Controllers
 
                     foreach (var test in AdditionalTests)
                     {
-                        if (additionalDict.TryGetValue(test, out var v))
+                        string russianName = TestLocalization.AdditionalStats.ContainsKey(test)
+                            ? TestLocalization.AdditionalStats[test]
+                            : test;
+
+                        if (additionalDict.TryGetValue(russianName, out var v))
                         {
                             var value = GetDoubleSafe(v);
+                            metrics[test] = value;
+                        }
+                        else if (additionalDict.TryGetValue(test, out var v2))
+                        {
+                            // Fallback на английское название
+                            var value = GetDoubleSafe(v2);
                             metrics[test] = value;
                         }
                         else
@@ -402,10 +436,17 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                         break;
 
                     case "nist":
-                        if (root.TryGetProperty("NIST", out var nist) &&
-                            nist.TryGetProperty(metric, out var nval))
+                        if (root.TryGetProperty("NIST", out var nist))
                         {
-                            value = nval.GetDouble();
+                            var localizedMetric =
+                                TestLocalization.Nist.ContainsKey(metric)
+                                    ? TestLocalization.Nist[metric]
+                                    : metric;
+
+                            if (nist.TryGetProperty(localizedMetric, out var nval))
+                            {
+                                value = GetDoubleSafe(nval) ?? double.NaN;
+                            }
                         }
                         break;
 
@@ -469,6 +510,17 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             ViewBag.Suite = suite;
             ViewBag.Metric = metric;
 
+            // Передаём локализацию тестов
+            ViewBag.TestLocalizationJson = JsonSerializer.Serialize(new
+            {
+                nist = TestLocalization.Nist,
+                diehard = TestLocalization.Diehard,
+                testu01 = TestLocalization.TestU01,
+                sac = TestLocalization.SAC,
+                bic = TestLocalization.BIC,
+                additional = TestLocalization.AdditionalStats
+            });
+
             return View(comparison);
         }
 
@@ -495,35 +547,84 @@ namespace Complex_for_analyzing_hash_functions.Controllers
                 {
                     case "diff":
                         if (metric.Equals("SAC", StringComparison.OrdinalIgnoreCase) &&
-                            root.TryGetProperty("Avalanche", out var a) &&
-                            a.TryGetProperty("MeanFlipRate", out var mfr))
-                            value = mfr.GetDouble();
+                            root.TryGetProperty("SAC", out var sac))
+                        {
+                            // Ищем локализованное название
+                            var localizedMetric = TestLocalization.SAC.ContainsKey("MeanFlipRate")
+                                ? TestLocalization.SAC["MeanFlipRate"]
+                                : "MeanFlipRate";
+
+                            if (sac.TryGetProperty(localizedMetric, out var mfr))
+                                value = mfr.GetDouble();
+                        }
                         else if (metric.Equals("BIC", StringComparison.OrdinalIgnoreCase) &&
-                            root.TryGetProperty("BIC", out var b) &&
-                            b.TryGetProperty("MaxCorrelationAbs", out var mc))
-                            value = mc.GetDouble();
+                            root.TryGetProperty("BIC", out var bic))
+                        {
+                            // Ищем локализованное название для MaxCorrelationAbs
+                            var localizedMetric = TestLocalization.BIC.ContainsKey("MaxCorrelationAbs")
+                                ? TestLocalization.BIC["MaxCorrelationAbs"]
+                                : "MaxCorrelationAbs";
+
+                            if (bic.TryGetProperty(localizedMetric, out var mc))
+                                value = mc.GetDouble();
+                        }
                         break;
 
                     case "nist":
-                        if (root.TryGetProperty("NIST", out var nist) && nist.TryGetProperty(metric, out var nval))
-                            value = nval.GetDouble();
+                        if (root.TryGetProperty("NIST", out var nist))
+                        {
+                            var localizedMetric = TestLocalization.Nist.ContainsKey(metric)
+                                ? TestLocalization.Nist[metric]
+                                : metric;
+
+                            if (nist.TryGetProperty(localizedMetric, out var nval))
+                            {
+                                value = GetDoubleSafe(nval) ?? double.NaN;
+                            }
+                        }
                         break;
 
                     case "diehard":
-                        if (root.TryGetProperty("Diehard", out var diehard) && diehard.TryGetProperty(metric, out var dval))
-                            value = dval.GetDouble();
+                        if (root.TryGetProperty("Diehard", out var diehard))
+                        {
+                            var localizedMetric = TestLocalization.Diehard.ContainsKey(metric)
+                                ? TestLocalization.Diehard[metric]
+                                : metric;
+
+                            if (diehard.TryGetProperty(localizedMetric, out var dval))
+                            {
+                                value = GetDoubleSafe(dval) ?? double.NaN;
+                            }
+                        }
                         break;
 
                     case "testu01":
-                        if (root.TryGetProperty("TestU01", out var testu01) && testu01.TryGetProperty(metric, out var tval))
-                            value = tval.GetDouble();
-                        break;
-                    case "additional":
-                        if (root.TryGetProperty("AdditionalStatistics", out var additional))
+                        if (root.TryGetProperty("TestU01", out var testu01))
                         {
+                            var localizedMetric = TestLocalization.TestU01.ContainsKey(metric)
+                                ? TestLocalization.TestU01[metric]
+                                : metric;
+
+                            if (testu01.TryGetProperty(localizedMetric, out var tval))
+                            {
+                                value = GetDoubleSafe(tval) ?? double.NaN;
+                            }
+                        }
+                        break;
+
+                    case "additional":
+                        // Пробуем оба варианта названия секции
+                        if (root.TryGetProperty("Статистические характеристики", out var additional) ||
+                            root.TryGetProperty("AdditionalStatistics", out additional))
+                        {
+                            // Ищем локализованное название теста
+                            var localizedMetric = TestLocalization.AdditionalStats.ContainsKey(metric)
+                                ? TestLocalization.AdditionalStats[metric]
+                                : metric;
+
                             foreach (var prop in additional.EnumerateObject())
                             {
-                                if (string.Equals(prop.Name, metric, StringComparison.OrdinalIgnoreCase))
+                                if (string.Equals(prop.Name, localizedMetric, StringComparison.OrdinalIgnoreCase))
                                 {
                                     value = GetDoubleSafe(prop.Value) ?? double.NaN;
                                     break;

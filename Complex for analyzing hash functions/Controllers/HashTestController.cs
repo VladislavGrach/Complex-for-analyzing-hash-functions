@@ -253,80 +253,77 @@ namespace Complex_for_analyzing_hash_functions.Controllers
             double mutualInfo = StatisticsAnalyzer.MutualInformationBits(largeStreamBits, 1);
 
             // === Агрегация ===
-            var fullStats = new
+            var fullStats = new Dictionary<string, object>
             {
-                Basic = new
+                ["Основные параметры"] = new Dictionary<string, object>
                 {
-                    result.RunDate,
-                    p.Algorithm,
-                    p.Rounds,
-                    p.TestsCount
+                    ["Дата запуска"] = result.RunDate,
+                    ["Алгоритм"] = p.Algorithm,
+                    ["Количество раундов"] = p.Rounds,
+                    ["Количество тестов"] = p.TestsCount
                 },
-                NIST = new
+                ["NIST"] = new Dictionary<string, double>
                 {
-                    Monobit = monobitList.Any() ? monobitList.Average() : double.NaN,
-                    FrequencyWithinBlock = freqWithinList.Any() ? freqWithinList.Average() : double.NaN,
-                    Runs = runsNistList.Any() ? runsNistList.Average() : double.NaN,
-                    LongestRunOfOnes = longestRunList.Any() ? longestRunList.Average() : double.NaN,
-                    BinaryMatrixRank = matrixRankList.Any() ? matrixRankList.Average() : double.NaN,
-                    DiscreteFourier = dftList.Any() ? dftList.Average() : double.NaN,
-                    NonOverlappingTemplate = nonOverlapList.Any() ? nonOverlapList.Average() : double.NaN,
-                    OverlappingTemplate = overlapList.Any() ? overlapList.Average() : double.NaN,
-                    MaurerUniversal = maurerList.Any() ? maurerList.Average() : double.NaN,
-                    LempelZiv = lempelZivList.Any() ? lempelZivList.Average() : double.NaN,
-                    LinearComplexity = linearComplexityList.Any() ? linearComplexityList.Average() : double.NaN,
-                    Serial = serialList.Any() ? serialList.Average() : double.NaN,
-                    ApproximateEntropy = approxEntropyList.Any() ? approxEntropyList.Average() : double.NaN,
-                    Cusum = cusumList.Any() ? cusumList.Average() : double.NaN,
-                    RandomExcursions = excursionsList.Any() ? excursionsList.Average() : double.NaN,
-                    RandomExcursionsVariant = excursionsVarList.Any() ? excursionsVarList.Average() : double.NaN
+                    [TestLocalization.Nist["Monobit"]] = monobitList.Any() ? monobitList.Average() : double.NaN,
+                    [TestLocalization.Nist["FrequencyWithinBlock"]] = freqWithinList.Any() ? freqWithinList.Average() : double.NaN,
+                    [TestLocalization.Nist["Runs"]] = runsNistList.Any() ? runsNistList.Average() : double.NaN,
+                    [TestLocalization.Nist["LongestRunOfOnes"]] = longestRunList.Any() ? longestRunList.Average() : double.NaN,
+                    [TestLocalization.Nist["BinaryMatrixRank"]] = matrixRankList.Any() ? matrixRankList.Average() : double.NaN,
+                    [TestLocalization.Nist["DiscreteFourier"]] = dftList.Any() ? dftList.Average() : double.NaN,
+                    [TestLocalization.Nist["NonOverlappingTemplate"]] = nonOverlapList.Any() ? nonOverlapList.Average() : double.NaN,
+                    [TestLocalization.Nist["OverlappingTemplate"]] = overlapList.Any() ? overlapList.Average() : double.NaN,
+                    [TestLocalization.Nist["MaurerUniversal"]] = maurerList.Any() ? maurerList.Average() : double.NaN,
+                    [TestLocalization.Nist["LempelZiv"]] = lempelZivList.Any() ? lempelZivList.Average() : double.NaN,
+                    [TestLocalization.Nist["LinearComplexity"]] = linearComplexityList.Any() ? linearComplexityList.Average() : double.NaN,
+                    [TestLocalization.Nist["Serial"]] = serialList.Any() ? serialList.Average() : double.NaN,
+                    [TestLocalization.Nist["ApproximateEntropy"]] = approxEntropyList.Any() ? approxEntropyList.Average() : double.NaN,
+                    [TestLocalization.Nist["Cusum"]] = cusumList.Any() ? cusumList.Average() : double.NaN,
+                    [TestLocalization.Nist["RandomExcursions"]] = excursionsList.Any() ? excursionsList.Average() : double.NaN,
+                    [TestLocalization.Nist["RandomExcursionsVariant"]] = excursionsVarList.Any() ? excursionsVarList.Average() : double.NaN
                 },
-                Diehard = new
+                ["Diehard"] = new Dictionary<string, double>
                 {
-                    BirthdaySpacings = birthdayList.Any() ? birthdayList.Average() : double.NaN,
-                    CountOnes = countOnesList.Any() ? countOnesList.Average() : double.NaN,
-                    OverlappingPermutations = overlapPermList.Any() ? overlapPermList.Average() : double.NaN,
-                    RunsDiehard = runsDiehardList.Any() ? runsDiehardList.Average() : double.NaN,
-                    Squeeze = squeezeList.Any() ? squeezeList.Average() : double.NaN,
-                    MatrixRanks = rankList.Any() ? rankList.Average() : double.NaN,
-                    Gcd = gcdList.Any() ? gcdList.Average() : double.NaN,
-                    Craps = crapsList.Any() ? crapsList.Average() : double.NaN
+                    [TestLocalization.Diehard["BirthdaySpacings"]] = birthdayList.Any() ? birthdayList.Average() : double.NaN,
+                    [TestLocalization.Diehard["CountOnes"]] = countOnesList.Any() ? countOnesList.Average() : double.NaN,
+                    [TestLocalization.Diehard["OverlappingPermutations"]] = overlapPermList.Any() ? overlapPermList.Average() : double.NaN,
+                    [TestLocalization.Diehard["RunsDiehard"]] = runsDiehardList.Any() ? runsDiehardList.Average() : double.NaN,
+                    [TestLocalization.Diehard["Squeeze"]] = squeezeList.Any() ? squeezeList.Average() : double.NaN,
+                    [TestLocalization.Diehard["MatrixRanks"]] = rankList.Any() ? rankList.Average() : double.NaN,
+                    [TestLocalization.Diehard["Gcd"]] = gcdList.Any() ? gcdList.Average() : double.NaN,
+                    [TestLocalization.Diehard["Craps"]] = crapsList.Any() ? crapsList.Average() : double.NaN
                 },
-                TestU01 = new
+                ["TestU01"] = new Dictionary<string, double>
                 {
-                    Collision = collisionU01List.Any() ? collisionU01List.Average() : double.NaN,
-                    Gap = gapU01List.Any() ? gapU01List.Average() : double.NaN,
-                    Autocorrelation = autoU01List.Any() ? autoU01List.Average() : double.NaN,
-                    Spectral = spectralU01List.Any() ? spectralU01List.Average() : double.NaN,
-                    HammingWeight = hammingU01List.Any() ? hammingU01List.Average() : double.NaN,
-                    SerialTest = serialU01List.Any() ? serialU01List.Average() : double.NaN,
-                    MultinomialTest = multinomialU01List.Any() ? multinomialU01List.Average() : double.NaN,
-                    ClosePairs = closePairsU01List.Any() ? closePairsU01List.Average() : double.NaN,
-                    CouponCollector = couponU01List.Any() ? couponU01List.Average() : double.NaN
+                    [TestLocalization.TestU01["Collision"]] = collisionU01List.Any() ? collisionU01List.Average() : double.NaN,
+                    [TestLocalization.TestU01["Gap"]] = gapU01List.Any() ? gapU01List.Average() : double.NaN,
+                    [TestLocalization.TestU01["Autocorrelation"]] = autoU01List.Any() ? autoU01List.Average() : double.NaN,
+                    [TestLocalization.TestU01["Spectral"]] = spectralU01List.Any() ? spectralU01List.Average() : double.NaN,
+                    [TestLocalization.TestU01["HammingWeight"]] = hammingU01List.Any() ? hammingU01List.Average() : double.NaN,
+                    [TestLocalization.TestU01["SerialTest"]] = serialU01List.Any() ? serialU01List.Average() : double.NaN,
+                    [TestLocalization.TestU01["MultinomialTest"]] = multinomialU01List.Any() ? multinomialU01List.Average() : double.NaN,
+                    [TestLocalization.TestU01["ClosePairs"]] = closePairsU01List.Any() ? closePairsU01List.Average() : double.NaN,
+                    [TestLocalization.TestU01["CouponCollector"]] = couponU01List.Any() ? couponU01List.Average() : double.NaN
                 },
-                Avalanche = new
+                ["SAC"] = new Dictionary<string, double>
                 {
-                    MeanFlipRate = sacMeanFlipRateList.Any() ? sacMeanFlipRateList.Average() : double.NaN,
-                    StdDevFlipRate = sacStdDevFlipRateList.Any() ? sacStdDevFlipRateList.Average() : double.NaN,
-                    MinPValue = sacMinPValueList.Any() ? sacMinPValueList.Min() : double.NaN,
-                    MaxPValue = sacMaxPValueList.Any() ? sacMaxPValueList.Max() : double.NaN,
-                    Notes = $"Среднее по количеству запусков: {p.TestsCount}"
+                    [TestLocalization.SAC["MeanFlipRate"]] = sacMeanFlipRateList.Any() ? sacMeanFlipRateList.Average() : double.NaN,
+                    [TestLocalization.SAC["StdDevFlipRate"]] = sacStdDevFlipRateList.Any() ? sacStdDevFlipRateList.Average() : double.NaN,
+                    [TestLocalization.SAC["MinPValue"]] = sacMinPValueList.Any() ? sacMinPValueList.Min() : double.NaN,
+                    [TestLocalization.SAC["MaxPValue"]] = sacMaxPValueList.Any() ? sacMaxPValueList.Max() : double.NaN
                 },
-                BIC = new
+                ["BIC"] = new Dictionary<string, double>
                 {
-                    MeanCorrelation = bicMeanCorrelationList.Any() ? bicMeanCorrelationList.Average() : double.NaN,
-                    StdCorrelation = bicStdCorrelationList.Any() ? bicStdCorrelationList.Average() : double.NaN,
-                    MaxCorrelationAbs = bicMaxCorrelationAbsList.Any() ? bicMaxCorrelationAbsList.Max() : double.NaN,
-                    MinCorrelationAbs = bicMinCorrelationList.Any() ? bicMinCorrelationList.Min() : double.NaN,
-                    Notes = $"Среднее по количеству запусков: {p.TestsCount}"
+                    [TestLocalization.BIC["MeanCorrelation"]] = bicMeanCorrelationList.Any() ? bicMeanCorrelationList.Average() : double.NaN,
+                    [TestLocalization.BIC["StdCorrelation"]] = bicStdCorrelationList.Any() ? bicStdCorrelationList.Average() : double.NaN,
+                    [TestLocalization.BIC["MaxCorrelationAbs"]] = bicMaxCorrelationAbsList.Any() ? bicMaxCorrelationAbsList.Max() : double.NaN,
+                    [TestLocalization.BIC["MinCorrelationAbs"]] = bicMinCorrelationList.Any() ? bicMinCorrelationList.Min() : double.NaN
                 },
-                AdditionalStatistics = new
+                ["Статистические характеристики"] = new Dictionary<string, object>
                 {
-                    ChiSquare = chiSquare,
-                    ShannonEntropy = entropy,
-                    Autocorrelation = autocorr,
-                    MutualInformation = mutualInfo,
-                    Notes = $"Рассчитано по битовой последовательности длиной {largeStreamBits.Length} бит."
+                    [TestLocalization.AdditionalStats["ChiSquare"]] = chiSquare,
+                    [TestLocalization.AdditionalStats["ShannonEntropy"]] = entropy,
+                    [TestLocalization.AdditionalStats["Autocorrelation"]] = autocorr,
+                    [TestLocalization.AdditionalStats["MutualInformation"]] = mutualInfo
                 }
             };
 

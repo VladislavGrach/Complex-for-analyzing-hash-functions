@@ -73,11 +73,11 @@
                                         else
                                         {
                                             <div class="row g-4">
-                                                @if (json.TryGetProperty("Basic", out var basic) && basic.ValueKind == JsonValueKind.Object)
+                                                @if (json.TryGetProperty("Основные параметры", out var basic) && basic.ValueKind == JsonValueKind.Object)
                                                 {
                                                     <div class="col-12">
                                                         <div class="details-card">
-                                                            <h3 class="details-title">Basic</h3>
+                                                            <h3 class="details-title">Основные параметры</h3>
                                                             <div class="table-responsive">
                                                                 <table class="basic-table">
                                                                     <tbody>
@@ -105,7 +105,7 @@
                                                                 {
                                                                     <li class="stats-item">
                                                                         <span class="stats-label">@test.Name</span>
-                                                                        @if (test.Name == "Notes")
+                                                                        @if (test.Name == "Примечание" || test.Name == "Notes")
                                                                         {
                                                                             <span class="stats-value notes-value">@test.Value</span>
                                                                         }
@@ -130,7 +130,7 @@
                                                                 {
                                                                     <li class="stats-item">
                                                                         <span class="stats-label">@test.Name</span>
-                                                                        @if (test.Name == "Notes")
+                                                                        @if (test.Name == "Примечание" || test.Name == "Notes")
                                                                         {
                                                                             <span class="stats-value notes-value">@test.Value</span>
                                                                         }
@@ -155,7 +155,7 @@
                                                                 {
                                                                     <li class="stats-item">
                                                                         <span class="stats-label">@test.Name</span>
-                                                                        @if (test.Name == "Notes")
+                                                                        @if (test.Name == "Примечание" || test.Name == "Notes")
                                                                         {
                                                                             <span class="stats-value notes-value">@test.Value</span>
                                                                         }
@@ -169,6 +169,32 @@
                                                         </div>
                                                     </div>
                                                 }
+
+                                                @if (json.TryGetProperty("SAC", out var sac) && sac.ValueKind == JsonValueKind.Object)
+                                                {
+                                                    <div class="col-lg-6">
+                                                        <div class="details-card h-100">
+                                                            <h3 class="details-title">SAC</h3>
+                                                            <ul class="stats-list">
+                                                                @foreach (var test in sac.EnumerateObject())
+                                                                {
+                                                                    <li class="stats-item">
+                                                                        <span class="stats-label">@test.Name</span>
+                                                                        @if (test.Name == "Примечание" || test.Name == "Notes")
+                                                                        {
+                                                                            <span class="stats-value notes-value">@test.Value</span>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span class="stats-value">@test.Value</span>
+                                                                        }
+                                                                    </li>
+                                                                }
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                }
+
                                                 @if (json.TryGetProperty("BIC", out var bic) && bic.ValueKind == JsonValueKind.Object)
                                                 {
                                                     <div class="col-lg-6">
@@ -179,7 +205,14 @@
                                                                 {
                                                                     <li class="stats-item">
                                                                         <span class="stats-label">@test.Name</span>
-                                                                        <span class="stats-value @(test.Name == "Notes" ? "notes-value" : "")">@test.Value</span>
+                                                                        @if (test.Name == "Примечание" || test.Name == "Notes")
+                                                                        {
+                                                                            <span class="stats-value notes-value">@test.Value</span>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span class="stats-value">@test.Value</span>
+                                                                        }
                                                                     </li>
                                                                 }
                                                             </ul>
@@ -187,42 +220,30 @@
                                                     </div>
                                                 }
 
-                                                @if (json.TryGetProperty("Avalanche", out var avalanche) && avalanche.ValueKind == JsonValueKind.Object)
+                                                @if (json.TryGetProperty("Статистические характеристики", out var additional) && additional.ValueKind == JsonValueKind.Object)
                                                 {
                                                     <div class="col-lg-6">
                                                         <div class="details-card h-100">
-                                                            <h3 class="details-title">Avalanche</h3>
-                                                            <ul class="stats-list">
-                                                                @foreach (var test in avalanche.EnumerateObject())
-                                                                {
-                                                                    <li class="stats-item">
-                                                                        <span class="stats-label">@test.Name</span>
-                                                                        <span class="stats-value @(test.Name == "Notes" ? "notes-value" : "")">@test.Value</span>
-                                                                    </li>
-                                                                }
-                                                            </ul>
-                                                        </div>
-                                                    </div>
-                                                }
-
-                                                @if (json.TryGetProperty("AdditionalStatistics", out var additional) && additional.ValueKind == JsonValueKind.Object)
-                                                {
-                                                    <div class="col-lg-6">
-                                                        <div class="details-card h-100">
-                                                            <h3 class="details-title">Additional Statistics</h3>
+                                                            <h3 class="details-title">Статистические характеристики</h3>
                                                             <ul class="stats-list">
                                                                 @foreach (var test in additional.EnumerateObject())
                                                                 {
                                                                     <li class="stats-item">
                                                                         <span class="stats-label">@test.Name</span>
-                                                                        <span class="stats-value @(test.Name == "Notes" ? "notes-value" : "")">@test.Value</span>
+                                                                        @if (test.Name == "Примечание" || test.Name == "Notes")
+                                                                        {
+                                                                            <span class="stats-value notes-value">@test.Value</span>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span class="stats-value">@test.Value</span>
+                                                                        }
                                                                     </li>
                                                                 }
                                                             </ul>
                                                         </div>
                                                     </div>
                                                 }
-
                                                 <div class="col-12">
                                                     <div class="details-card">
                                                         <details>
@@ -231,6 +252,7 @@
                                                         </details>
                                                     </div>
                                                 </div>
+
                                             </div>
                                         }
                                     </div>

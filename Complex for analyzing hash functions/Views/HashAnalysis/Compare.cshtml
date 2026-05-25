@@ -92,7 +92,7 @@
                                id="suite-additional"
                                value="additional"
                         @(suite == "additional" ? "checked" : null) />
-                        <label class="form-check-label" for="suite-additional">Additional</label>
+                        <label class="form-check-label" for="suite-additional">Статистические характеристики</label>
                     </div>
                 </div>
             </div>
@@ -161,6 +161,10 @@
         window.currentMetric = "@metric";
     </script>
 
+    <script id="test-localization-data" type="application/json">
+        @Html.Raw(ViewBag.TestLocalizationJson)
+    </script>
+
     <!-- Подключение основного JS-файла с логикой -->
-    <script src="~/js/hash-compare.js"></script>
+    <script src="~/js/hash-compare.js" asp-append-version="true"></script>
 }

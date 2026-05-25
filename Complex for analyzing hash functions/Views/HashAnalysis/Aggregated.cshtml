@@ -65,7 +65,7 @@
                 <div class="form-check">
                     <input class="form-check-input" type="radio" name="suiteRadio" id="suite-additional" value="additional"
                            @(suite == "additional" ? "checked" : null)>
-                    <label class="form-check-label" for="suite-additional">Additional</label>
+                    <label class="form-check-label" for="suite-additional">Статистические характеристики</label>
                 </div>
 
             </div>
@@ -75,31 +75,7 @@
 
     <!-- ===== SAC + BIC ===== -->
     <div class="suite-group" data-suite="diff" style="@(suite != "diff" ? "display:none;" : "")">
-        <div class="row g-4">
-
-            <div class="col-lg-6">
-                <div class="card analysis-card">
-                    <div class="card-body">
-                        <h5 class="card-title">Strict Avalanche Criterion (SAC)</h5>
-                        <div class="chart-container">
-                            <canvas id="sacChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-lg-6">
-                <div class="card analysis-card">
-                    <div class="card-body">
-                        <h5 class="card-title">Bit Independence Criterion (BIC)</h5>
-                        <div class="chart-container">
-                            <canvas id="bicChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
+        <div class="row g-4" id="diffCharts"></div>
     </div>
 
     <!-- ===== NIST ===== -->
@@ -117,7 +93,7 @@
         <div class="row g-4" id="testu01Charts"></div>
     </div>
 
-    <!-- ===== Additional Statistics ===== -->
+    <!-- ===== Статистические характеристики ===== -->
     <div class="suite-group" data-suite="additional" style="@(suite != "additional" ? "display:none;" : "")">
         <div class="row g-4" id="additionalCharts"></div>
     </div>

@@ -209,20 +209,30 @@
         const btnGroup = document.createElement("div");
         btnGroup.className = "d-flex gap-2 mt-3 flex-wrap chart-export-buttons";
 
+        // Функция для получения безопасного имени файла (удаляем только недопустимые символы)
+        function getSafeFileName(testName, algorithm) {
+            let safeName = testName.replace(/[\\/:*?"<>|]/g, '_');
+            safeName = safeName.replace(/\s+/g, ' ');
+            return `${safeName} ${algorithm}`;
+        }
+
         const csvBtn = document.createElement("button");
         csvBtn.className = "btn btn-outline-secondary btn-sm";
         csvBtn.textContent = "Экспорт CSV";
         csvBtn.onclick = () => {
-            let csv = "Раунд,Среднее,Верхняя граница,Нижняя граница,Исходное значение было NaN\n";
+            let csv = "Раунд;Среднее;Верхняя граница;Нижняя граница;Исходное значение отсутствовало\n";
             rounds.forEach((r, i) => {
                 const wasNaN = metricsArr[i]?.[testKey]?.Mean === null || isNaN(metricsArr[i]?.[testKey]?.Mean);
-                csv += `${r},${mean[i]},${upper[i]},${lower[i]},${wasNaN ? 'Да' : 'Нет'}\n`;
+                csv += `${r};${mean[i]};${upper[i]};${lower[i]};${wasNaN ? 'Да' : 'Нет'}\n`;
             });
-            const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+            // Заменяем точку на запятую для корректного отображения в Excel
+            csv = csv.replace(/\./g, ',');
+            const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `${(testKey || title).replace(/\s+/g, "_")}_${window.currentAlgorithm}.csv`;
+            const fileName = getSafeFileName(title || testKey, window.currentAlgorithm);
+            a.download = `${fileName}.csv`;
             a.click();
             URL.revokeObjectURL(url);
         };
@@ -234,21 +244,22 @@
             // В JSON сохраняем исходные значения с информацией о NaN
             const originalMean = metricsArr.map(m => m?.[testKey]?.Mean ?? null);
             const exportData = {
-                algorithm: window.currentAlgorithm,
-                suite: document.querySelector('input[name="suiteRadio"]:checked')?.value || 'diff',
-                test: testKey || title,
-                rounds: rounds,
-                mean_displayed: mean,
-                mean_original: originalMean,
-                upper: upper,
-                lower: lower,
-                note: "Значения 0 означают, что исходное значение было NaN (тест не удался)"
+                "Алгоритм": window.currentAlgorithm,
+                "Набор тестов": document.querySelector('input[name="suiteRadio"]:checked')?.value || 'diff',
+                "Тест": title || testKey,
+                "Раунды": rounds,
+                "Отображаемое среднее": mean,
+                "Исходное среднее": originalMean,
+                "Верхняя граница": upper,
+                "Нижняя граница": lower,
+                "Примечание": "Значения 0 означают, что исходное значение отсутствовало (тест не удался)"
             };
             const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `${(testKey || title).replace(/\s+/g, "_")}_${window.currentAlgorithm}.json`;
+            const fileName = getSafeFileName(title || testKey, window.currentAlgorithm);
+            a.download = `${fileName}.json`;
             a.click();
             URL.revokeObjectURL(url);
         };
@@ -259,7 +270,8 @@
         pngBtn.onclick = () => {
             const link = document.createElement("a");
             link.href = chart.toBase64Image();
-            link.download = `${(testKey || title).replace(/\s+/g, "_")}_${window.currentAlgorithm}.png`;
+            const fileName = getSafeFileName(title || testKey, window.currentAlgorithm);
+            link.download = `${fileName}.png`;
             link.click();
         };
 
@@ -279,83 +291,65 @@
         default: { line: '#2ca02c', zone: 'rgba(44,160,44,0.25)' }
     };
 
+    const DIFF_TESTS = [
+        { key: "SAC", title: "Строгий лавинный критерий (SAC)", yLabel: "Доля изменённых выходных битов", yMin: 0, yMax: 1, color: COLORS.SAC },
+        { key: "BIC", title: "Критерий независимости битов (BIC)", yLabel: "Максимальная корреляция", yMin: -1.4, yMax: 2, color: COLORS.BIC }
+    ];
+
     const NIST_TESTS = [
-        { key: "Monobit", title: "Monobit Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "FrequencyWithinBlock", title: "Frequency Within Block", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "Runs", title: "Runs Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "LongestRunOfOnes", title: "Longest Run of Ones", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "BinaryMatrixRank", title: "Binary Matrix Rank", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "DiscreteFourier", title: "Discrete Fourier Transform", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "NonOverlappingTemplate", title: "Non-overlapping Template", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "OverlappingTemplate", title: "Overlapping Template", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "MaurerUniversal", title: "Maurer Universal", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "LempelZiv", title: "Lempel-Ziv", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "LinearComplexity", title: "Linear Complexity", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "Serial", title: "Serial Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "ApproximateEntropy", title: "Approximate Entropy", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "Cusum", title: "Cumulative Sums", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "RandomExcursions", title: "Random Excursions", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "RandomExcursionsVariant", title: "Random Excursions Variant", yLabel: "p-value", yMin: 0, yMax: 1 }
+        { key: "Monobit", title: "Частотный побитовый тест", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "FrequencyWithinBlock", title: "Частотный блочный тест", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Runs", title: "Тест на последовательность одинаковых бит", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "LongestRunOfOnes", title: "Тест на самую длинную последовательность единиц в блоке", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "BinaryMatrixRank", title: "Тест рангов бинарных матриц", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "DiscreteFourier", title: "Спектральный тест", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "NonOverlappingTemplate", title: "Тест на совпадение непересекающихся шаблонов", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "OverlappingTemplate", title: "Тест на совпадение пересекающихся шаблонов", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "MaurerUniversal", title: "Универсальный статистический тест Маурера", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "LempelZiv", title: "Тест сжатия Лемпеля-Зива", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "LinearComplexity", title: "Тест на линейную сложность", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Serial", title: "Тест на периодичность", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "ApproximateEntropy", title: "Тест приближённой энтропии", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Cusum", title: "Тест кумулятивных сумм", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "RandomExcursions", title: "Тест случайных блужданий", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "RandomExcursionsVariant", title: "Модифицированный тест случайных блужданий", yLabel: "p-value", yMin: 0, yMax: 1 }
     ];
 
     const DIEHARD_TESTS = [
-        { key: "BirthdaySpacings", title: "Birthday Spacings Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "CountOnes", title: "Count Ones Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "MatrixRanks", title: "Matrix Ranks Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "OverlappingPermutations", title: "Overlapping Permutations Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "RunsDiehard", title: "Runs Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "Gcd", title: "GCD Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "Squeeze", title: "Squeeze Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "Craps", title: "Craps Test", yLabel: "p-value", yMin: 0, yMax: 1 }
+        { key: "BirthdaySpacings", title: "Тест распределения дней рождения", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "CountOnes", title: "Тест подсчёта единиц", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "MatrixRanks", title: "Тест рангов матриц ", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "OverlappingPermutations", title: "Тест на пересекающиеся перестановки", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "RunsDiehard", title: "Тест на серии", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Gcd", title: "Тест наибольшего общего делителя", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Squeeze", title: "Тест сжатия", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Craps", title: "Тест игры в крэпс", yLabel: "p-value", yMin: 0, yMax: 1 }
     ];
 
     const TESTU01_TESTS = [
-        { key: "Collision", title: "Collision Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "Gap", title: "Gap Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "Autocorrelation", title: "Autocorrelation Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "Spectral", title: "Spectral Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "HammingWeight", title: "Hamming Weight Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "SerialTest", title: "Serial Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "MultinomialTest", title: "Multinomial Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "ClosePairs", title: "Close Pairs Test", yLabel: "p-value", yMin: 0, yMax: 1 },
-        { key: "CouponCollector", title: "Coupon Collector Test", yLabel: "p-value", yMin: 0, yMax: 1 }
+        { key: "Collision", title: "Тест на коллизии", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Gap", title: "Тест на промежутки", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Autocorrelation", title: "Тест автокорреляции ", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "Spectral", title: "Спектральный тест", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "HammingWeight", title: "Тест веса Хэмминга", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "SerialTest", title: "Серийный тест", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "MultinomialTest", title: "Мультиномиальный тест", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "ClosePairs", title: "Тест близких пар", yLabel: "p-value", yMin: 0, yMax: 1 },
+        { key: "CouponCollector", title: "Тест коллекционера купонов", yLabel: "p-value", yMin: 0, yMax: 1 }
     ];
 
     const ADDITIONAL_TESTS = [
-        { key: "ChiSquare", title: "Chi-Square", yLabel: "Значение χ²", yMin: 0, yMax: null },
-        { key: "ShannonEntropy", title: "Shannon Entropy", yLabel: "Энтропия", yMin: 0, yMax: 1 },
-        { key: "Autocorrelation", title: "Autocorrelation", yLabel: "Коэффициент автокорреляции", yMin: -0.2, yMax: 0.2 },
-        { key: "MutualInformation", title: "Mutual Information", yLabel: "Взаимная информация", yMin: 0, yMax: 1 }
+        { key: "ChiSquare", title: "Критерий χ²", yLabel: "Значение χ²", yMin: 0, yMax: null },
+        { key: "ShannonEntropy", title: "Энтропия Шеннона", yLabel: "Энтропия", yMin: 0, yMax: 1 },
+        { key: "Autocorrelation", title: "Автокорреляция", yLabel: "Коэффициент автокорреляции", yMin: -0.2, yMax: 0.2 },
+        { key: "MutualInformation", title: "Взаимная информация", yLabel: "Взаимная информация", yMin: 0, yMax: 1 }
     ];
 
     // 5. Отрисовка графиков
     function renderSuite(suite) {
-        if (suite === "diff") {
-            const sac = series("SAC");
-            drawChart(
-                "sacChart",
-                "Strict Avalanche Criterion (SAC)",
-                "Доля изменённых выходных битов",
-                sac.mean, sac.upper, sac.lower,
-                COLORS.SAC,
-                0, 1,
-                "SAC"
-            );
-
-            const bic = series("BIC");
-            drawChart(
-                "bicChart",
-                "Bit Independence Criterion (BIC)",
-                "Максимальная корреляция",
-                bic.mean, bic.upper, bic.lower,
-                COLORS.BIC,
-                -1.4, 2,
-                "BIC"
-            );
-            return;
-        }
 
         const testsMap = {
+            diff: {tests: DIFF_TESTS},
             nist: { tests: NIST_TESTS, color: { line: "#2ca02c", zone: "rgba(44,160,44,0.25)" } },
             diehard: { tests: DIEHARD_TESTS, color: { line: "#9467bd", zone: "rgba(148,103,189,0.25)" } },
             testu01: { tests: TESTU01_TESTS, color: { line: "#8c564b", zone: "rgba(140,86,75,0.25)" } },
@@ -380,10 +374,6 @@
             const body = document.createElement("div");
             body.className = "card-body";
 
-            const h5 = document.createElement("h5");
-            h5.className = "card-title";
-            h5.textContent = test.title;
-
             const canvasId = `${suite}-${test.key}`;
 
             const chartContainer = document.createElement("div");
@@ -393,9 +383,8 @@
             canvas.id = canvasId;
 
             chartContainer.appendChild(canvas);
-
-            body.appendChild(h5);
             body.appendChild(chartContainer);
+
             card.appendChild(body);
             col.appendChild(card);
             container.appendChild(col);
@@ -406,7 +395,7 @@
                 test.title,
                 test.yLabel,
                 s.mean, s.upper, s.lower,
-                config.color,
+                test.color || config.color,
                 test.yMin,
                 test.yMax,
                 test.key
