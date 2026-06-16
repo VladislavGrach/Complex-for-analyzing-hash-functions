@@ -25,7 +25,7 @@
 <style>
     .details-card {
         background: #ffffff;
-        border: 2px solid #cbd5e1; /* ← основное изменение */
+        border: 2px solid #cbd5e1;
         border-radius: 16px;
         padding: 1.25rem;
         box-shadow: 0 2px 8px rgba(0,0,0,0.02);
@@ -47,8 +47,7 @@
         <!-- BASIC -->
         <div class="col-12">
             <div class="details-card basic-card">
-                <!-- можно добавить класс basic-card для вариаций -->
-                <h3 class="details-title">Basic</h3>
+                <h3 class="details-title">Основные параметры</h3>
                 <div class="table-responsive">
                     <table class="basic-table">
                         <tbody>
@@ -163,11 +162,11 @@
             }
 
             <!-- AVALANCHE -->
-            @if (json.TryGetProperty("Avalanche", out var avalanche) && avalanche.ValueKind == JsonValueKind.Object)
+            @if (json.TryGetProperty("SAC", out var avalanche) && avalanche.ValueKind == JsonValueKind.Object)
             {
                 <div class="col-lg-6">
                     <div class="details-card h-100">
-                        <h3 class="details-title">Avalanche</h3>
+                        <h3 class="details-title">SAC</h3>
                         <ul class="stats-list">
                             @foreach (var test in avalanche.EnumerateObject())
                             {
@@ -215,11 +214,11 @@
             }
 
             <!-- Additional statistics -->
-            @if (json.TryGetProperty("AdditionalStatistics", out var additional) && additional.ValueKind == JsonValueKind.Object)
+            @if (json.TryGetProperty("Статистические характеристики", out var additional) && additional.ValueKind == JsonValueKind.Object)
             {
                 <div class="col-lg-6">
                     <div class="details-card h-100">
-                        <h3 class="details-title">Additional Statistics</h3>
+                        <h3 class="details-title">Статистические характеристики</h3>
                         <ul class="stats-list">
                             @foreach (var test in additional.EnumerateObject())
                             {
